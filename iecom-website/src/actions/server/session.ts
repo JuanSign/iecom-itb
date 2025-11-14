@@ -2,7 +2,7 @@ import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-type SessionPayload = {
+export type SessionPayload = {
   account_id: string;
   email: string;
   events: string[] | null;
