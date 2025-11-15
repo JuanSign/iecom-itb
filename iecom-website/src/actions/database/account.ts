@@ -17,3 +17,19 @@ export async function createAccount(email: string, passwordHash: string): Promis
   
   return rows[0] as Account;
 }
+
+export async function addEventToAccount(account_id: string, eventTag: string) {
+  await DB`
+    UPDATE account
+    SET events = array_append(events, ${eventTag})
+    WHERE account_id = ${account_id}
+  `;
+}
+
+export async function removeEventFromAccount(account_id: string, eventTag: string) {
+  await DB`
+    UPDATE account
+    SET events = array_remove(events, ${eventTag})
+    WHERE account_id = ${account_id}
+  `;
+}

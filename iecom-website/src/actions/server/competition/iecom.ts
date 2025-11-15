@@ -1,14 +1,14 @@
 "use server"
 
-import { CreateTeamFormState, createTeamSchema, JoinTeamFormState, joinTeamSchema, UpdateMemberFormState } from "@/actions/types/Competition";
+import { CreateTeamFormState, createTeamSchema, JoinTeamFormState, joinTeamSchema, PaymentFormState, UpdateMemberFormState } from "@/actions/types/Competition";
 import { refreshSession, verifySession } from "../session";
 import { DB } from "@/lib/DB";
-import { addMemberToTeam, deleteMember, insertNewTeam } from "@/actions/database/nice_team";
+import { addMemberToTeam, deleteMember, fetchTeamPageData, getTeamId, insertNewTeam, updatePayment } from "@/actions/database/iecom_team";
 import { addEventToAccount, removeEventFromAccount } from "@/actions/database/account";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { uploadFileToR2 } from "@/lib/R2";
-import { updateMember } from "@/actions/database/nice_member";
+import { getSignedUrlForR2, uploadFileToR2 } from "@/lib/R2";
+import { updateMember } from "@/actions/database/iecom_member";
 
 function generateTeamCode(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -43,7 +43,7 @@ export async function createTeam(
 
     while (!isCodeUnique && attempts < 5) {
         newCode = generateTeamCode();
-        const existing = await DB`SELECT 1 FROM nice_team WHERE code = ${newCode}`;
+        const existing = await DB`SELECT 1 FROM iecom_team WHERE code = ${newCode}`;
         if (existing.length === 0) isCodeUnique = true;
         attempts++;
     }
@@ -52,14 +52,16 @@ export async function createTeam(
 
     try {
         await insertNewTeam(teamName, newCode, account_id, email);
-        await addEventToAccount(account_id, "NICE");
+        await addEventToAccount(account_id, "IECOM");
         await refreshSession(account_id);
-    } catch {
+
+    } catch (e) {
+        console.error("Create Team Error:", e);
         return { error: "An error occurred. Please try again." };
     }
 
     revalidatePath("/dashboard");
-    redirect("/dashboard/competition/nice/team");
+    redirect("/dashboard/iecom/team");
 }
 
 export async function joinTeam(
@@ -78,10 +80,10 @@ export async function joinTeam(
     }
 
     const { teamCode } = validatedFields.data;
-    const { account_id } = session;
+    const { account_id, email } = session;
 
     try {
-        const team = await DB`SELECT team_id, count FROM nice_team WHERE code = ${teamCode}`;
+        const team = await DB`SELECT team_id, count FROM iecom_team WHERE code = ${teamCode}`;
         if (team.length === 0) return { error: "Invalid team code." };
 
         const teamId = team[0].team_id;
@@ -91,8 +93,8 @@ export async function joinTeam(
             return { error: "This team has reached the maximum of 3 members." };
         }
 
-        await addMemberToTeam(teamId, account_id);
-        await addEventToAccount(account_id, "NICE");
+        await addMemberToTeam(teamId, account_id, email);
+        await addEventToAccount(account_id, "IECOM");
         await refreshSession(account_id);
 
     } catch(e){
@@ -101,7 +103,7 @@ export async function joinTeam(
     }
 
     revalidatePath("/dashboard");
-    redirect("/dashboard/competition/nice/team");
+    redirect("/dashboard/iecom/team");
 }
 
 export async function leaveTeam() {
@@ -111,14 +113,40 @@ export async function leaveTeam() {
 
   try {
     await deleteMember(account_id);
-    await removeEventFromAccount(account_id, "NICE");
+    await removeEventFromAccount(account_id, "IECOM");
     await refreshSession(account_id);
   } catch (error) {
     console.error("Leave team error:", error);
   }
 
-  revalidatePath("/dashboard/competition/mc");
-  redirect("/dashboard/competition");
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
+}
+
+export async function getTeamPageData() {
+  const session = await verifySession();
+  if (!session) redirect("/");
+  const { account_id } = session;
+
+  try {
+    const data = await fetchTeamPageData(account_id);
+
+    for (const member of data.members) {
+      member.sc_link = await getSignedUrlForR2(member.sc_link);
+      member.sd_link = await getSignedUrlForR2(member.sc_link);
+      member.fp_link = await getSignedUrlForR2(member.fp_link);
+    }
+
+    // Generate Signed URLs for team documents
+    data.team.pp_link = await getSignedUrlForR2(data.team.pp_link);
+
+    return data;
+  } catch (e) {
+    if ((e as Error).message === "User not assigned to a team.") {
+      redirect("/dashboard");
+    }
+    throw e;
+  }
 }
 
 export async function updateMemberDetails(
@@ -178,5 +206,35 @@ export async function updateMemberDetails(
   } catch (e) {
     console.error("Update Member Error:", e);
     return { error: "An error occurred while saving your details." };
+  }
+}
+
+export async function updateBilling(
+  prevState: PaymentFormState,
+  formData: FormData
+): Promise<PaymentFormState> {
+  const session = await verifySession();
+  if (!session) return { error: "Not authenticated." };
+  const { account_id } = session;
+
+  try {
+    const paymentProofFile = formData.get("payment_proof_url") as File;
+
+    if (!paymentProofFile || paymentProofFile.size === 0) {
+      return { error: "Please select a payment proof file." };
+    }
+
+    const ppKey = await uploadFileToR2(paymentProofFile, "team-pp", account_id);
+
+    const team_id = await getTeamId(account_id);
+    if (!team_id) return { error: "You are not on a team." };
+
+    await updatePayment(team_id, ppKey);
+
+    revalidatePath("/dashboard/competition/mc/team");
+    return { message: "Payment proof uploaded successfully." };
+
+  } catch{
+    return { error: "An error occurred while uploading payment proof." };
   }
 }

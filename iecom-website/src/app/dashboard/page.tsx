@@ -24,13 +24,11 @@ import {
 
 // LockedSection component remains unchanged
 function LockedSection({ 
-  step, 
   title, 
   description, 
   subtext,
   borderColorClass 
 }: { 
-  step: string; 
   title: string; 
   description: string; 
   subtext?: string;
@@ -43,9 +41,6 @@ function LockedSection({
     )}>
       <CardHeader>
         <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-            <Badge variant="outline" className="bg-transparent border-muted-foreground/50 text-muted-foreground">
-                {step}
-            </Badge>
             <Badge variant="secondary" className="text-xs">
                 <Lock className="w-3 h-3 mr-1" /> Locked
             </Badge>
@@ -91,7 +86,6 @@ export default async function CompetitionPage() {
         {/* --- 1. IECOM (Industrial Engineering Competition) --- */}
         {isIECOMLocked ? (
             <LockedSection 
-              step="A"
               title="IECOM (Industrial Engineering Competition)"
               description="International competition where students tackle real industrial challenges."
               subtext={`${lockMessage} You have already joined NICE.`}
@@ -134,7 +128,6 @@ export default async function CompetitionPage() {
         {/* --- 2. NICE (National Industrial Competition for Entrepreneurs) --- */}
         {isNICELocked ? (
             <LockedSection 
-              step="B"
               title="NICE (National Industrial Competition for Entrepreneurs)"
               description="National platform that challenges students to develop and pitch innovative business plans."
               subtext={`${lockMessage} You have already joined IECOM.`}

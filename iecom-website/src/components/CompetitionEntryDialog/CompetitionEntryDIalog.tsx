@@ -2,15 +2,16 @@
 
 import React, { useState, useActionState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // 1. Import useRouter
 import { toast } from "sonner";
-import { joinTeam, createTeam } from "@/actions/server/competition";
-import { type TeamFormState } from "@/actions/types/Team";
+
+import { createTeam as createIecom, joinTeam as joinIecom } from "@/actions/server/competition/iecom";
+import { createTeam as createNice, joinTeam as joinNice } from "@/actions/server/competition/nice";
+
+import { type CreateTeamFormState, type JoinTeamFormState } from "@/actions/types/Competition";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, UserPlus, Loader2, Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 type Props = {
   competition: "IECOM" | "NICE";
@@ -29,8 +30,8 @@ type Props = {
   hasJoined: boolean;
 };
 
-const initialCreateState: TeamFormState = {};
-const initialJoinState: TeamFormState = {};
+const initialCreateState: CreateTeamFormState = {};
+const initialJoinState: JoinTeamFormState = {};
 
 export function CompetitionEntryDialog({
   competition,
@@ -38,18 +39,37 @@ export function CompetitionEntryDialog({
   hasJoined,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter(); // 2. Get router instance
 
-  // These actions are now generic and will be used by both forms
+  // 1. Dynamic Wrapper for Create Action
+  const handleCreate = async (prevState: CreateTeamFormState, formData: FormData) => {
+    if (competition === "IECOM") {
+      return createIecom(prevState, formData);
+    } else {
+      return createNice(prevState, formData);
+    }
+  };
+
+  // 2. Dynamic Wrapper for Join Action
+  const handleJoin = async (prevState: JoinTeamFormState, formData: FormData) => {
+    if (competition === "IECOM") {
+      return joinIecom(prevState, formData);
+    } else {
+      return joinNice(prevState, formData);
+    }
+  };
+
   const [createState, createAction, isCreating] = useActionState(
-    createTeam,
+    handleCreate,
     initialCreateState
   );
+
   const [joinState, joinAction, isJoining] = useActionState(
-    joinTeam,
+    handleJoin,
     initialJoinState
   );
 
+  // 3. Error Handling
+  // Success handling is managed by the 'redirect' in your server actions
   useEffect(() => {
     if (createState?.error) {
       toast.error(createState.error);
@@ -57,54 +77,27 @@ export function CompetitionEntryDialog({
     if (joinState?.error) {
       toast.error(joinState.error);
     }
+  }, [createState, joinState]);
 
-    // 3. This is the new success handler
-    const handleSuccess = (comp: "IECOM" | "NICE") => {
-      toast.success(`Successfully joined team for ${comp}!`);
-      
-      // We push the redirect to the next tick to ensure state updates
-      // and toasts are processed before the page unloads.
-      setTimeout(() => {
-        setIsOpen(false);
-        // router.refresh() tells Next.js to re-fetch the dashboard page
-        // so it sees your new session.events array
-        router.refresh();
-        router.push(`/dashboard/competition/${comp.toLowerCase()}`);
-      }, 0);
-    };
-
-    // 4. Check for success and call the handler
-    if (createState?.success) {
-      handleSuccess(competition);
-    }
-    if (joinState?.success) {
-      handleSuccess(competition);
-    }
-    // We disable the exhaustive-deps rule here because we ONLY
-    // want this effect to run when createState or joinState change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createState, joinState, router]);
-
-  // 1. If user has joined, show a simple link
+  // 4. If already joined, just show the Enter button
   if (hasJoined) {
     return (
       <Button
         asChild
         className="text-white bg-blue-800 hover:bg-blue-900"
       >
-        <Link href={`/dashboard/competition/${competition.toLowerCase()}`}>
-          Enter
+        <Link href={`/dashboard/${competition.toLowerCase()}/team`}>
+          Enter Team Dashboard
         </Link>
       </Button>
     );
   }
 
-  // 2. If not joined, show the Dialog Trigger
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button className="text-white bg-blue-800 hover:bg-blue-900">
-          Enter
+          Enter Competition
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
@@ -126,7 +119,6 @@ export function CompetitionEntryDialog({
           {/* --- CREATE TEAM TAB --- */}
           <TabsContent value="create" className="space-y-4 py-4">
             <form action={createAction} className="flex flex-col gap-4">
-              <input type="hidden" name="competition" value={competition} />
               <div className="space-y-2">
                 <Label htmlFor="teamName">Team Name</Label>
                 <Input
@@ -137,36 +129,8 @@ export function CompetitionEntryDialog({
                   }`}
                   required
                   disabled={isCreating}
+                  minLength={3}
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Select your Role</Label>
-                {/* Radio buttons are now visible by default */}
-                <RadioGroup
-                  defaultValue="MEMBER"
-                  name="role"
-                  className="flex gap-4"
-                >
-                  <Label
-                    htmlFor="c-manager"
-                    className="flex items-center space-x-2 border rounded-md p-3 flex-1 cursor-pointer hover:bg-accent has-checked:bg-accent has-checked:border-primary"
-                  >
-                    <RadioGroupItem value="MANAGER" id="c-manager" />
-                    <span className="flex items-center gap-2 w-full">
-                      <UserPlus className="w-4 h-4" /> Manager
-                    </span>
-                  </Label>
-                  <Label
-                    htmlFor="c-member"
-                    className="flex items-center space-x-2 border rounded-md p-3 flex-1 cursor-pointer hover:bg-accent has-checked:bg-accent has-checked:border-primary"
-                  >
-                    <RadioGroupItem value="MEMBER" id="c-member" />
-                    <span className="flex items-center gap-2 w-full">
-                      <Users className="w-4 h-4" /> Member
-                    </span>
-                  </Label>
-                </RadioGroup>
               </div>
 
               <Button
@@ -179,7 +143,7 @@ export function CompetitionEntryDialog({
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
                   </>
                 ) : (
-                  "Create"
+                  "Create Team"
                 )}
               </Button>
             </form>
@@ -188,7 +152,6 @@ export function CompetitionEntryDialog({
           {/* --- JOIN TEAM TAB --- */}
           <TabsContent value="join" className="space-y-4 py-4">
             <form action={joinAction} className="flex flex-col gap-4">
-              <input type="hidden" name="competition" value={competition} />
               <div className="space-y-2">
                 <Label htmlFor="teamCode">Team Code</Label>
                 <Input
@@ -197,35 +160,12 @@ export function CompetitionEntryDialog({
                   placeholder="e.g. ABCDE"
                   required
                   disabled={isJoining}
+                  maxLength={5}
+                  style={{ textTransform: "uppercase" }} // Visual helper
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Select your Role</Label>
-                <RadioGroup
-                  defaultValue="MEMBER"
-                  name="role"
-                  className="flex gap-4"
-                >
-                  <Label
-                    htmlFor="j-manager"
-                    className="flex items-center space-x-2 border rounded-md p-3 flex-1 cursor-pointer hover:bg-accent has-checked:bg-accent has-checked:border-primary"
-                  >
-                    <RadioGroupItem value="MANAGER" id="j-manager" />
-                    <span className="flex items-center gap-2 w-full">
-                      <UserPlus className="w-4 h-4" /> Manager
-                    </span>
-                  </Label>
-                  <Label
-                    htmlFor="j-member"
-                    className="flex items-center space-x-2 border rounded-md p-3 flex-1 cursor-pointer hover:bg-accent has-checked:bg-accent has-checked:border-primary"
-                  >
-                    <RadioGroupItem value="MEMBER" id="j-member" />
-                    <span className="flex items-center gap-2 w-full">
-                      <Users className="w-4 h-4" /> Member
-                    </span>
-                  </Label>
-                </RadioGroup>
+                <p className="text-[0.8rem] text-muted-foreground">
+                  Ask your team leader for the 5-letter code.
+                </p>
               </div>
 
               <Button
@@ -238,18 +178,17 @@ export function CompetitionEntryDialog({
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Joining...
                   </>
                 ) : (
-                  "Join"
+                  "Join Team"
                 )}
               </Button>
             </form>
           </TabsContent>
         </Tabs>
 
-        {/* 3. "Find a Team" Button */}
         <DialogFooter className="pt-4 border-t sm:justify-center">
-          <Button variant="ghost" className="w-full sm:w-auto">
+          <Button variant="ghost" className="w-full sm:w-auto" disabled>
             <Search className="mr-2 h-4 w-4" />
-            Don&apos;t have a team yet? Find one!
+            Need a team? (Coming Soon)
           </Button>
         </DialogFooter>
       </DialogContent>

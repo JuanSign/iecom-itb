@@ -1,6 +1,7 @@
 import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
+import { DB } from '@/lib/DB';
 
 export type SessionPayload = {
   account_id: string;
@@ -47,6 +48,37 @@ export async function verifySession() {
   } catch {
     return null;
   }
+}
+
+export async function refreshSession(account_id: string) {
+  const users = await DB`
+    SELECT account_id, email, events 
+    FROM account 
+    WHERE account_id = ${account_id}
+  `;
+
+  if (users.length === 0) return;
+  const user = users[0];
+
+  const sessionPayload = {
+    account_id: user.account_id,
+    email: user.email,
+    events: user.events || [], 
+  };
+
+  const token = await new SignJWT(sessionPayload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("1d")
+    .sign(key); 
+    
+  const cookieStore = await cookies();
+  cookieStore.set("session", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24,
+    path: "/",
+  });
 }
 
 export async function deleteSession() {
