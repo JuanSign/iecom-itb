@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { createTeam as createIecom, joinTeam as joinIecom } from "@/actions/server/competition/iecom";
 import { createTeam as createNice, joinTeam as joinNice } from "@/actions/server/competition/nice";
-
 import { type CreateTeamFormState, type JoinTeamFormState } from "@/actions/types/Competition";
 
 import { Button } from "@/components/ui/button";
@@ -40,52 +39,47 @@ export function CompetitionEntryDialog({
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // 1. Dynamic Wrapper for Create Action
+  // Action Wrappers
   const handleCreate = async (prevState: CreateTeamFormState, formData: FormData) => {
-    if (competition === "IECOM") {
-      return createIecom(prevState, formData);
-    } else {
-      return createNice(prevState, formData);
-    }
+    if (competition === "IECOM") return createIecom(prevState, formData);
+    else return createNice(prevState, formData);
   };
 
-  // 2. Dynamic Wrapper for Join Action
   const handleJoin = async (prevState: JoinTeamFormState, formData: FormData) => {
-    if (competition === "IECOM") {
-      return joinIecom(prevState, formData);
-    } else {
-      return joinNice(prevState, formData);
-    }
+    if (competition === "IECOM") return joinIecom(prevState, formData);
+    else return joinNice(prevState, formData);
   };
 
-  const [createState, createAction, isCreating] = useActionState(
-    handleCreate,
-    initialCreateState
-  );
+  // --- Server Actions ---
+  const [createState, createAction, isCreating] = useActionState(handleCreate, initialCreateState);
+  const [joinState, joinAction, isJoining] = useActionState(handleJoin, initialJoinState);
 
-  const [joinState, joinAction, isJoining] = useActionState(
-    handleJoin,
-    initialJoinState
-  );
+  // --- LOGIC FIX: Track which "version" of the state the user has dismissed/edited ---
+  // We store the *entire* state object that the user has acted upon.
+  const [dismissedCreateState, setDismissedCreateState] = useState<CreateTeamFormState | null>(null);
+  const [dismissedJoinState, setDismissedJoinState] = useState<JoinTeamFormState | null>(null);
 
-  // 3. Error Handling
-  // Success handling is managed by the 'redirect' in your server actions
+  // Calculate the Active Error inline (No useEffect needed)
+  // If the current state from server is the same one we marked as dismissed, show nothing.
+  const createError = createState === dismissedCreateState ? null : createState.error;
+  const joinError = joinState === dismissedJoinState ? null : joinState.error;
+
+  // --- Only use useEffect for Toast (Side Effects), NOT for UI state ---
   useEffect(() => {
-    if (createState?.error) {
+    if (createState.error && createState !== dismissedCreateState) {
       toast.error(createState.error);
     }
-    if (joinState?.error) {
+  }, [createState, dismissedCreateState]);
+
+  useEffect(() => {
+    if (joinState.error && joinState !== dismissedJoinState) {
       toast.error(joinState.error);
     }
-  }, [createState, joinState]);
+  }, [joinState, dismissedJoinState]);
 
-  // 4. If already joined, just show the Enter button
   if (hasJoined) {
     return (
-      <Button
-        asChild
-        className="text-white bg-blue-800 hover:bg-blue-900"
-      >
+      <Button asChild className="text-white bg-blue-800 hover:bg-blue-900">
         <Link href={`/dashboard/${competition.toLowerCase()}/team`}>
           Enter Team Dashboard
         </Link>
@@ -93,8 +87,16 @@ export function CompetitionEntryDialog({
     );
   }
 
+  const handleOpenChange = (open: boolean) => {
+  setIsOpen(open);
+  if (!open) {
+    setDismissedCreateState(null);
+    setDismissedJoinState(null);
+  }
+};
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="text-white bg-blue-800 hover:bg-blue-900">
           Enter Competition
@@ -102,9 +104,7 @@ export function CompetitionEntryDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            You don&apos;t have a team for {competition} yet!
-          </DialogTitle>
+          <DialogTitle>You don&apos;t have a team for {competition} yet!</DialogTitle>
           <DialogDescription>
             To participate in the {competitionFullName}, you must belong to a team.
           </DialogDescription>
@@ -124,13 +124,21 @@ export function CompetitionEntryDialog({
                 <Input
                   id="teamName"
                   name="teamName"
-                  placeholder={`e.g. ${
-                    competition === "IECOM" ? "The Analysts" : "NICE Innovators"
-                  }`}
+                  placeholder={`e.g. ${competition === "IECOM" ? "The Analysts" : "NICE Innovators"}`}
                   required
                   disabled={isCreating}
                   minLength={3}
+                  // --- THE FIX IS HERE ---
+                  // When user types, we tell React: "Ignore the current 'createState' object errors"
+                  onChange={() => setDismissedCreateState(createState)}
+                  
+                  className={createError ? "border-red-500 focus-visible:ring-red-500" : ""}
                 />
+                {createError && (
+                  <p className="text-sm font-medium text-red-500 animate-in fade-in slide-in-from-top-1">
+                    {createError}
+                  </p>
+                )}
               </div>
 
               <Button
@@ -161,8 +169,17 @@ export function CompetitionEntryDialog({
                   required
                   disabled={isJoining}
                   maxLength={5}
-                  style={{ textTransform: "uppercase" }} // Visual helper
+                  style={{ textTransform: "uppercase" }}
+                  // --- THE FIX IS HERE ---
+                  onChange={() => setDismissedJoinState(joinState)}
+                  
+                  className={joinError ? "border-red-500 focus-visible:ring-red-500" : ""}
                 />
+                {joinError && (
+                  <p className="text-sm font-medium text-red-500 animate-in fade-in slide-in-from-top-1">
+                    {joinError}
+                  </p>
+                )}
                 <p className="text-[0.8rem] text-muted-foreground">
                   Ask your team leader for the 5-letter code.
                 </p>

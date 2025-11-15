@@ -3,7 +3,7 @@
 import { CreateTeamFormState, createTeamSchema, JoinTeamFormState, joinTeamSchema, PaymentFormState, UpdateMemberFormState } from "@/actions/types/Competition";
 import { refreshSession, verifySession } from "../session";
 import { DB } from "@/lib/DB";
-import { addMemberToTeam, deleteMember, fetchTeamPageData, getTeamId, insertNewTeam, updatePayment } from "@/actions/database/iecom_team";
+import { addMemberToTeam, checkTeamNameExists, deleteMember, fetchTeamPageData, getTeamId, insertNewTeam, updatePayment } from "@/actions/database/iecom_team";
 import { addEventToAccount, removeEventFromAccount } from "@/actions/database/account";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -36,6 +36,16 @@ export async function createTeam(
 
     const { teamName } = validatedFields.data;
     const { account_id, email } = session;
+
+    try {
+        const nameTaken = await checkTeamNameExists(teamName);
+        if (nameTaken) {
+            return { error: "This team name is already taken. Please choose another." };
+        }
+    } catch (e) {
+        console.error("Check name error:", e);
+        return { error: "Could not verify team name availability." };
+    }
 
     let newCode = "";
     let isCodeUnique = false;
@@ -71,11 +81,13 @@ export async function joinTeam(
     const session = await verifySession();
     if (!session) return { error: "Not authenticated." };
 
+    const rawCode = formData.get("teamCode") as string;
     const validatedFields = joinTeamSchema.safeParse({
-        teamCode: formData.get("teamCode"),
+        teamCode: rawCode?.toUpperCase(),
     });
 
     if (!validatedFields.success) {
+        console.log(`ERROR: ${formData.get("teamCode")}`)
         return { error: validatedFields.error.issues.map((e) => e.message).join(", ") };
     }
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { verifySession } from "@/actions/server/session";
 import { cn } from "@/lib/utils";
-import { CompetitionEntryDialog } from "@/components/CompetitionEntryDialog/CompetitionEntryDIalog";
+import { CompetitionEntryDialog } from "@/components/CompetitionEntryDialog/CompetitionEntryDialog";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +21,8 @@ import {
   Lock,
   AlertCircle
 } from "lucide-react";
+import { Toaster } from "sonner";
 
-// LockedSection component remains unchanged
 function LockedSection({ 
   title, 
   description, 
@@ -81,6 +81,7 @@ export default async function CompetitionPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <Toaster richColors/>
       <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
         
         {/* --- 1. IECOM (Industrial Engineering Competition) --- */}
@@ -109,7 +110,7 @@ export default async function CompetitionPage() {
                 International competition where students tackle real industrial challenges 
                 through case studies, simulations, and data-driven analysis.
               </p>
-              <p className="text-sm font-medium mt-2">Open to teams of 1-3 participants.</p>
+              <p className="text-sm font-medium mt-2">Open to teams of 3 participants.</p>
             </CardContent>
             <CardFooter className="flex gap-3 justify-end">
               <Button variant="outline" asChild>
@@ -153,7 +154,7 @@ export default async function CompetitionPage() {
                     National platform that challenges students to develop and pitch 
                     innovative business plans.
                 </p>
-                <p className="text-sm font-medium mt-2">Open to teams of 3 participants.</p>
+                <p className="text-sm font-medium mt-2">Open to teams of 1-3 participants.</p>
             </CardContent>
             <CardFooter className="flex gap-3 justify-end">
               <Button variant="outline" asChild>

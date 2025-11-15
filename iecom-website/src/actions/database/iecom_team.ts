@@ -1,6 +1,16 @@
 import { DB } from "@/lib/DB";
 import { Member, TeamIECOM } from "../types/Competition";
 
+export async function checkTeamNameExists(teamName: string): Promise<boolean> {
+    // usage of ILIKE (postgres) for case-insensitive check. 
+    // If using MySQL, usually default search is case-insensitive.
+    const result = await DB`
+        SELECT 1 FROM iecom_team 
+        WHERE LOWER(name) = LOWER(${teamName})
+    `;
+    return result.length > 0;
+}
+
 export async function insertNewTeam(
     teamName: string,
     newCode: string,

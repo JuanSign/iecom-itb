@@ -1,6 +1,14 @@
 import { DB } from "@/lib/DB";
 import { Member, TeamNICE } from "../types/Competition";
 
+export async function checkTeamNameExists(teamName: string): Promise<boolean> {
+    const result = await DB`
+        SELECT 1 FROM nice_team 
+        WHERE LOWER(name) = LOWER(${teamName})
+    `;
+    return result.length > 0;
+}
+
 export async function insertNewTeam(
     teamName: string,
     newCode: string,
@@ -25,7 +33,7 @@ export async function insertNewTeam(
 export async function addMemberToTeam(teamId: string, accountId: string) {
     await DB`
         INSERT INTO nice_member (team_id, account_id, role)
-        VALUES (${teamId}, ${accountId}, MEMBER')
+        VALUES (${teamId}, ${accountId}, 'MEMBER') 
     `;
 }
 
