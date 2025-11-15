@@ -1,13 +1,13 @@
 "use server"
 
-import { CreateTeamFormState, createTeamSchema, JoinTeamFormState, joinTeamSchema, UpdateMemberFormState } from "@/actions/types/Competition";
+import { CreateTeamFormState, createTeamSchema, JoinTeamFormState, joinTeamSchema, UpdateMemberFormState, UploadDocsFormState } from "@/actions/types/Competition";
 import { refreshSession, verifySession } from "../session";
 import { DB } from "@/lib/DB";
-import { addMemberToTeam, deleteMember, insertNewTeam } from "@/actions/database/nice_team";
+import { addMemberToTeam, deleteMember, fetchTeamPageData, getTeamId, insertNewTeam, updateTeamDocsInDb } from "@/actions/database/nice_team";
 import { addEventToAccount, removeEventFromAccount } from "@/actions/database/account";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { uploadFileToR2 } from "@/lib/R2";
+import { getSignedUrlForR2, uploadFileToR2 } from "@/lib/R2";
 import { updateMember } from "@/actions/database/nice_member";
 
 function generateTeamCode(): string {
@@ -59,7 +59,7 @@ export async function createTeam(
     }
 
     revalidatePath("/dashboard");
-    redirect("/dashboard/competition/nice/team");
+    redirect("/dashboard/nice/team");
 }
 
 export async function joinTeam(
@@ -101,7 +101,7 @@ export async function joinTeam(
     }
 
     revalidatePath("/dashboard");
-    redirect("/dashboard/competition/nice/team");
+    redirect("/dashboard/nice/team");
 }
 
 export async function leaveTeam() {
@@ -117,8 +117,35 @@ export async function leaveTeam() {
     console.error("Leave team error:", error);
   }
 
-  revalidatePath("/dashboard/competition/mc");
-  redirect("/dashboard/competition");
+  revalidatePath("/dashboard/nice/team");
+  redirect("/dashboard");
+}
+
+export async function getTeamPageData() {
+  const session = await verifySession();
+  if (!session) redirect("/");
+  const { account_id } = session;
+
+  try {
+    const data = await fetchTeamPageData(account_id);
+
+    for (const member of data.members) {
+      member.sc_link = await getSignedUrlForR2(member.sc_link);
+      member.sd_link = await getSignedUrlForR2(member.sc_link);
+      member.fp_link = await getSignedUrlForR2(member.fp_link);
+    }
+
+    // Generate Signed URLs for team documents
+    data.team.bmc_link = await getSignedUrlForR2(data.team.bmc_link);
+    data.team.poo_link = await getSignedUrlForR2(data.team.poo_link);
+
+    return data;
+  } catch (e) {
+    if ((e as Error).message === "User not assigned to a team.") {
+      redirect("/dashboard");
+    }
+    throw e;
+  }
 }
 
 export async function updateMemberDetails(
@@ -172,11 +199,61 @@ export async function updateMemberDetails(
       fpKey
     );
 
-    revalidatePath("/dashboard/competition/mc/team");
+    revalidatePath("/dashboard/nice/team");
     return { message: "Your details have been saved successfully." };
 
   } catch (e) {
     console.error("Update Member Error:", e);
     return { error: "An error occurred while saving your details." };
+  }
+}
+
+export async function uploadNiceTeamDocuments(
+  prevState: UploadDocsFormState,
+  formData: FormData
+): Promise<UploadDocsFormState> {
+  const session = await verifySession();
+  if (!session) return { error: "Not authenticated." };
+  const { account_id } = session;
+
+  try {
+    // 1. Get the Team ID
+    const team_id = await getTeamId(account_id);
+    if (!team_id) return { error: "You are not part of a NICE team." };
+
+    // 2. Get Files from Form
+    const bmcFile = formData.get("doc_bmc") as File;
+    const pooFile = formData.get("doc_poo") as File;
+
+    // 3. Validation: Ensure at least one file is being uploaded
+    if ((!bmcFile || bmcFile.size === 0) && (!pooFile || pooFile.size === 0)) {
+      return { error: "Please upload at least one document." };
+    }
+
+    // 4. Upload to R2 (only if file exists)
+    // We initialize keys as null so the DB function knows to skip them if not provided
+    let bmcKey: string | null = null;
+    let pooKey: string | null = null;
+
+    if (bmcFile && bmcFile.size > 0) {
+      // Path convention: nice/team_id/bmc_[timestamp].pdf
+      bmcKey = await uploadFileToR2(bmcFile, `nice/${team_id}/bmc`, account_id);
+    }
+
+    if (pooFile && pooFile.size > 0) {
+      // Path convention: nice/team_id/poo_[timestamp].pdf
+      pooKey = await uploadFileToR2(pooFile, `nice/${team_id}/poo`, account_id);
+    }
+
+    // 5. Update Database
+    await updateTeamDocsInDb(team_id, bmcKey, pooKey);
+
+    // 6. Revalidate UI
+    revalidatePath("/dashboard/nice/team"); // Adjust this path to your actual page route
+    return { message: "Documents uploaded successfully." };
+
+  } catch (error) {
+    console.error("Upload Error:", error);
+    return { error: "An error occurred while uploading documents. Please try again." };
   }
 }

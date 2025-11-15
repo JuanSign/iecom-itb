@@ -200,7 +200,7 @@ export async function updateMemberDetails(
       fpKey
     );
 
-    revalidatePath("/dashboard/competition/mc/team");
+    revalidatePath("/dashboard/iecom/team");
     return { message: "Your details have been saved successfully." };
 
   } catch (e) {
@@ -231,7 +231,7 @@ export async function updateBilling(
 
     await updatePayment(team_id, ppKey);
 
-    revalidatePath("/dashboard/competition/mc/team");
+    revalidatePath("/dashboard/iecom/team");
     return { message: "Payment proof uploaded successfully." };
 
   } catch{

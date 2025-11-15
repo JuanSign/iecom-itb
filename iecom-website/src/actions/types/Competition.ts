@@ -39,6 +39,18 @@ export type TeamIECOM = {
   pp_verified: number
 }
 
+export type TeamNICE = {
+  team_id: string,
+  name: string, 
+  code: string,
+  status: number,
+  messages: string[] | null,
+  notes: string[] | null,
+  bmc_link: string | null,
+  poo_link: string | null,
+  submission_status: number
+}
+
 export type UpdateMemberFormState = {
   error?: string;
   message?: string;
@@ -48,3 +60,8 @@ export type PaymentFormState = {
   error?: string;
   message?: string;
 }
+
+export type UploadDocsFormState = {
+  error?: string;
+  message?: string;
+};
