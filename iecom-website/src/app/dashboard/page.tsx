@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { verifySession } from "@/actions/server/session";
-import { cn } from "@/lib/utils"; 
+import { cn } from "@/lib/utils";
+import { CompetitionEntryDialog } from "@/components/CompetitionEntryDialog/CompetitionEntryDIalog";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ import {
   AlertCircle
 } from "lucide-react";
 
+// LockedSection component remains unchanged
 function LockedSection({ 
   step, 
   title, 
@@ -69,6 +71,7 @@ function LockedSection({
   );
 }
 
+// --- Main Page Component ---
 export default async function CompetitionPage() {
   const session = await verifySession();
   if (!session) redirect("/register");
@@ -85,9 +88,10 @@ export default async function CompetitionPage() {
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
         
+        {/* --- 1. IECOM (Industrial Engineering Competition) --- */}
         {isIECOMLocked ? (
             <LockedSection 
-              step="LOCKED"
+              step="A"
               title="IECOM (Industrial Engineering Competition)"
               description="International competition where students tackle real industrial challenges."
               subtext={`${lockMessage} You have already joined NICE.`}
@@ -117,16 +121,20 @@ export default async function CompetitionPage() {
               <Button variant="outline" asChild>
                 <Link href="/dashboard/competition/iecom/details">Show More</Link>
               </Button>
-              <Button asChild className="text-white">
-                <Link href="/dashboard/competition/iecom/register">Enter</Link>
-              </Button>
+              {/* --- Use the new component --- */}
+              <CompetitionEntryDialog 
+                competition="IECOM"
+                competitionFullName="Industrial Engineering Competition"
+                hasJoined={hasJoinedIECOM}
+              />
             </CardFooter>
           </Card>
         )}
 
+        {/* --- 2. NICE (National Industrial Competition for Entrepreneurs) --- */}
         {isNICELocked ? (
             <LockedSection 
-              step="LOCKED"
+              step="B"
               title="NICE (National Industrial Competition for Entrepreneurs)"
               description="National platform that challenges students to develop and pitch innovative business plans."
               subtext={`${lockMessage} You have already joined IECOM.`}
@@ -158,9 +166,12 @@ export default async function CompetitionPage() {
               <Button variant="outline" asChild>
                 <Link href="/dashboard/competition/nice/details">Show More</Link>
               </Button>
-              <Button asChild className="text-white">
-                <Link href="/dashboard/competition/nice/register">Enter</Link>
-              </Button>
+              {/* --- Use the new component --- */}
+              <CompetitionEntryDialog 
+                competition="NICE"
+                competitionFullName="National Industrial Competition for Entrepreneurs"
+                hasJoined={hasJoinedNICE}
+              />
             </CardFooter>
           </Card>
         )}
