@@ -116,7 +116,7 @@ export function AuthForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [isLogin, setIsLogin] = useState(true)
+  const [isLogin, setIsLogin] = useState(false)
   
   const [emailValue, setEmailValue] = useState("")
   const [passwordValue, setPasswordValue] = useState("")

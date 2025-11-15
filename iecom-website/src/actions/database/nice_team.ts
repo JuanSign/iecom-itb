@@ -38,7 +38,21 @@ export async function addMemberToTeam(teamId: string, accountId: string) {
 }
 
 export async function deleteMember(accountId: string) {
-  await DB`DELETE FROM nice_member WHERE account_id = ${accountId}`;
+  const deletedMembers = await DB`
+    DELETE FROM nice_member 
+    WHERE account_id = ${accountId}
+    RETURNING team_id
+  `;
+
+  if (deletedMembers.length > 0) {
+    const teamId = deletedMembers[0].team_id;
+
+    await DB`
+      UPDATE nice_team
+      SET count = count - 1
+      WHERE team_id = ${teamId}
+    `;
+  }
 }
 
 export async function fetchTeamPageData(accountId: string) {

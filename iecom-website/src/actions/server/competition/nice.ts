@@ -142,7 +142,7 @@ export async function getTeamPageData() {
 
     for (const member of data.members) {
       member.sc_link = await getSignedUrlForR2(member.sc_link);
-      member.sd_link = await getSignedUrlForR2(member.sc_link);
+      member.sd_link = await getSignedUrlForR2(member.sd_link);
       member.fp_link = await getSignedUrlForR2(member.fp_link);
     }
 

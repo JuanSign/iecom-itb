@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,28 +30,7 @@ import { CustomFileInput, isImageUrl } from "../CustomFileInput/CustomFileInput"
 
 import { updateMemberDetails as updateNice } from "@/actions/server/competition/nice"; 
 import { updateMemberDetails as updateIecom } from "@/actions/server/competition/iecom";
-
-export type Member = {
-  account_id: string;
-  email: string;
-  name: string | null;
-  institution: string | null;
-  phone_num: string | null;
-  id_no: string | null;
-  sc_link: string | null;
-  sc_verified: number;
-  sd_link: string | null;
-  sd_verified: number;
-  fp_link: string | null;
-  fp_verified: number;
-  status: number;
-  notes: string[] | null;
-};
-
-export type UpdateMemberFormState = {
-  error?: string;
-  message?: string;
-};
+import { Member, UpdateMemberFormState } from "@/actions/types/Competition";
 
 function VerificationStatusBadge({ status }: { status: number }) {
   const statusConfig = {
@@ -88,10 +67,15 @@ function VerificationStatusBadge({ status }: { status: number }) {
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ formId }: { formId: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="text-white">
+    <Button 
+      type="submit" 
+      form={formId}
+      disabled={pending} 
+      className="bg-blue-600! hover:bg-blue-700! text-white! w-full sm:w-auto font-semibold"
+    >
       {pending ? "Saving..." : "Save Details"}
     </Button>
   );
@@ -211,46 +195,34 @@ function ViewMemberDetails({ member }: { member: Member }) {
   );
 }
 
-// --- Main Dialog Component ---
-
 const initialState: UpdateMemberFormState = {};
 
 export function TeamMemberDialog({
   member,
   isCurrentUser,
-  event, // Added Prop
+  event,
 }: {
   member: Member;
   isCurrentUser: boolean;
-  event: "NICE" | "IECOM"; // Added Type
+  event: "NICE" | "IECOM";
 }) {
   const [open, setOpen] = useState(false);
-
-  // --- 2. Dynamically Select Action ---
-  // Based on the event prop, we choose which server action to run.
   const selectedAction = event === "NICE" ? updateNice : updateIecom;
-
   const [formState, formAction] = useActionState(selectedAction, initialState);
 
-  // --- 3. Fixed useEffect ---
   useEffect(() => {
     if (formState?.error) {
       toast.error(formState.error);
     } 
-    
     if (formState?.message) {
       toast.success(formState.message);
-      
-      // Fix: Wrap setOpen in setTimeout to avoid synchronous state update error.
-      // This pushes the modal closing to the end of the event loop.
       const timer = setTimeout(() => {
         setOpen(false);
       }, 0);
-
       return () => clearTimeout(timer);
     }
   }, [formState]); 
-
+  const FORM_ID = "update-member-form";
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -263,149 +235,162 @@ export function TeamMemberDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isCurrentUser
-              ? "Edit Your Details"
-              : `View ${member.name || member.email}`}
-          </DialogTitle>
-          <DialogDescription>
-            {isCurrentUser
-              ? "Update your personal information and upload required documents."
-              : "You are viewing this member's details."}
-          </DialogDescription>
-        </DialogHeader>
+      {/* CHANGED: Added flex col and max-height to Content to allow sticky footer */}
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+        
+        {/* Fixed Header */}
+        <div className="p-6 pb-2">
+            <DialogHeader>
+            <DialogTitle>
+                {isCurrentUser
+                ? "Edit Your Details"
+                : `View ${member.name || member.email}`}
+            </DialogTitle>
+            <DialogDescription>
+                {isCurrentUser
+                ? "Update your personal information and upload required documents."
+                : "You are viewing this member's details."}
+            </DialogDescription>
+            </DialogHeader>
+        </div>
 
-        {isCurrentUser ? (
-          <form action={formAction}>
-            <FieldGroup className="flex flex-col gap-6">
-              {/* --- Personal Details --- */}
-              <div className="space-y-4">
-                 <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2">Personal Information</h4>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 pt-2">
+            {isCurrentUser ? (
+            <form id={FORM_ID} action={formAction} className="h-full">
+                <FieldGroup className="flex flex-col gap-6">
+                {/* --- Personal Details --- */}
+                <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2">Personal Information</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Field>
-                      <FieldLabel htmlFor="name">Full Name</FieldLabel>
-                      <Input
+                        <FieldLabel htmlFor="name">Full Name</FieldLabel>
+                        <Input
                         id="name"
                         name="name"
                         defaultValue={member.name ?? ""}
                         placeholder="e.g. John Doe"
                         className="mt-1"
-                      />
+                        />
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="institution">Institution</FieldLabel>
-                      <Input
+                        <FieldLabel htmlFor="institution">Institution</FieldLabel>
+                        <Input
                         id="institution"
                         name="institution"
                         defaultValue={member.institution ?? ""}
                         placeholder="University name"
                         className="mt-1"
-                      />
+                        />
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="phone_num">Phone Number</FieldLabel>
-                      <Input
+                        <FieldLabel htmlFor="phone_num">Phone Number</FieldLabel>
+                        <Input
                         id="phone_num"
                         name="phone_num"
                         defaultValue={member.phone_num ?? ""}
-                        placeholder="+62..."
+                        placeholder="+XX1234567890"
                         className="mt-1"
-                      />
+                        />
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="id_no">ID Number (NIM/KTP)</FieldLabel>
-                      <Input
+                        <FieldLabel htmlFor="id_no">Student Number (NIM)</FieldLabel>
+                        <Input
                         id="id_no"
                         name="id_no"
                         defaultValue={member.id_no ?? ""}
                         placeholder="e.g. 12345678"
                         className="mt-1"
-                      />
+                        />
                     </Field>
-                 </div>
-              </div>
+                    </div>
+                </div>
 
-              {/* --- Documents --- */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2">Documents</h4>
-                
-                {/* Student Card */}
-                <Field>
-                  <div className="flex justify-between items-center mb-1">
-                    <FieldLabel>Student Card (SC)</FieldLabel>
-                    <VerificationStatusBadge status={member.sc_verified} />
-                  </div>
-                  <CustomFileInput
-                    name="sc_link"
-                    label="Student Card"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    currentFileUrl={member.sc_link}
-                    disabled={!isCurrentUser}
-                  />
-                </Field>
+                {/* --- Documents --- */}
+                <div className="space-y-4">
+                    <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2">Documents</h4>
+                    
+                    <Field>
+                    <div className="flex justify-between items-center mb-1">
+                        <FieldLabel>Student Card</FieldLabel>
+                        <VerificationStatusBadge status={member.sc_verified} />
+                    </div>
+                    <CustomFileInput
+                        name="sc_link"
+                        label="Upload your student card here"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        currentFileUrl={member.sc_link}
+                        disabled={!isCurrentUser}
+                    />
+                    </Field>
 
-                {/* Student Data / Declaration */}
-                <Field>
-                  <div className="flex justify-between items-center mb-1">
-                    <FieldLabel>Student Data (SD)</FieldLabel>
-                    <VerificationStatusBadge status={member.sd_verified} />
-                  </div>
-                  <CustomFileInput
-                    name="sd_link"
-                    label="Student Data Document"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    currentFileUrl={member.sd_link}
-                    disabled={!isCurrentUser}
-                  />
-                </Field>
+                    <Field>
+                    <div className="flex justify-between items-center mb-1">
+                        <FieldLabel>PDDIKTI</FieldLabel>
+                        <VerificationStatusBadge status={member.sd_verified} />
+                    </div>
+                    <CustomFileInput
+                        name="sd_link"
+                        label="Upload the screenshot of your PDDIKTI page"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        currentFileUrl={member.sd_link}
+                        disabled={!isCurrentUser}
+                    />
+                    </Field>
 
-                {/* Formal Photo */}
-                <Field>
-                  <div className="flex justify-between items-center mb-1">
-                    <FieldLabel>Formal Photo (FP)</FieldLabel>
-                    <VerificationStatusBadge status={member.fp_verified} />
-                  </div>
-                  <CustomFileInput
-                    name="fp_link"
-                    label="Formal Photo"
-                    accept=".jpg,.jpeg,.png"
-                    currentFileUrl={member.fp_link}
-                    disabled={!isCurrentUser}
-                  />
-                </Field>
-              </div>
-            </FieldGroup>
+                    <Field>
+                    <div className="flex justify-between items-center mb-1">
+                        <FieldLabel>Proof of following</FieldLabel>
+                        <VerificationStatusBadge status={member.fp_verified} />
+                    </div>
+                    <CustomFileInput
+                        name="fp_link"
+                        label="A screenshot of @iecom2026 instagram account"
+                        accept=".jpg,.jpeg,.png"
+                        currentFileUrl={member.fp_link}
+                        disabled={!isCurrentUser}
+                    />
+                    </Field>
+                </div>
+                </FieldGroup>
+            </form>
+            ) : (
+                <ViewMemberDetails member={member} />
+            )}
+        </div>
 
-            <DialogFooter className="mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </Button>
-              <SubmitButton />
-            </DialogFooter>
-          </form>
-        ) : (
-          <>
-            <ViewMemberDetails member={member} />
-            <DialogFooter className="mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Close
-              </Button>
-            </DialogFooter>
-          </>
-        )}
+        {/* Sticky Footer */}
+        <div className="p-6 pt-4 border-t bg-background mt-auto">
+            {isCurrentUser ? (
+                <DialogFooter>
+                    <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOpen(false)}
+                    >
+                    Cancel
+                    </Button>
+                    {/* We use form attribute to link button to form because they are now in different containers */}
+                    <form action={formAction} className="contents">
+                        <SubmitButton formId={FORM_ID} />
+                    </form>
+                </DialogFooter>
+            ) : (
+                <DialogFooter>
+                    <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOpen(false)}
+                    >
+                    Close
+                    </Button>
+                </DialogFooter>
+            )}
+        </div>
+
       </DialogContent>
     </Dialog>
   );

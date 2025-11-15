@@ -134,7 +134,7 @@ export default async function TeamPage() {
                 <div key={member.account_id} className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src={member.fp_link || ""} alt={member.name || "Member"} />
+                      <AvatarImage src={member.sc_link || ""} alt={member.name || "Member"} />
                       <AvatarFallback>
                         {getInitials(member.name, member.email).toUpperCase()}
                       </AvatarFallback>
