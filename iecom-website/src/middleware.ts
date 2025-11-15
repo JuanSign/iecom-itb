@@ -35,6 +35,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
+  const allowedPaths = ['/register', '/dashboard'];
+  const isAllowedPath = allowedPaths.some((route) => path.startsWith(route));
+
+  if (!isAllowedPath) {
+    return NextResponse.redirect(new URL('/register', request.url));
+  }
+
   return NextResponse.next();
 }
 
