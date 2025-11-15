@@ -114,7 +114,13 @@ export default async function CompetitionPage() {
             </CardContent>
             <CardFooter className="flex gap-3 justify-end">
               <Button variant="outline" asChild>
-                <Link href="/dashboard/iecom/details">Show More</Link>
+              <Link 
+                href="https://bit.ly/GuidebookIECOM2026" 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                Show More
+              </Link>
               </Button>
               {/* --- Use the new component --- */}
               <CompetitionEntryDialog 
@@ -158,7 +164,13 @@ export default async function CompetitionPage() {
             </CardContent>
             <CardFooter className="flex gap-3 justify-end">
               <Button variant="outline" asChild>
-                <Link href="/dashboard/nice/details">Show More</Link>
+                <Link 
+                  href="https://bit.ly/GuidebookNICE2026" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  Show More
+                </Link>
               </Button>
               {/* --- Use the new component --- */}
               <CompetitionEntryDialog 
