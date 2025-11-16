@@ -72,7 +72,7 @@ export async function fetchTeamPageData(accountId: string) {
         SELECT 
             account_id, email, name, institution, phone_num, 
             id_no, sc_link, sc_verified, sd_link, sd_verified, 
-            fp_link, fp_verified, status, notes
+            fp_link, fp_verified, sp_link, sp_verified, status, notes
         FROM nice_member 
         WHERE team_id = ${teamId}
     `) as Member[];

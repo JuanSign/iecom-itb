@@ -24,6 +24,8 @@ export type Member = {
   sd_verified: number,
   fp_link: string | null,
   fp_verified: number,
+  sp_link: string | null,
+  sp_verified: number,
   status: number,
   notes: string[] | null,
 }

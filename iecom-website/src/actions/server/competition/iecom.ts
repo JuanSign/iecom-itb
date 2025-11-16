@@ -167,57 +167,43 @@ export async function getTeamPageData() {
 }
 
 export async function updateMemberDetails(
-    prevState: UpdateMemberFormState,
-    formData: FormData
+  prevState: UpdateMemberFormState,
+  formData: FormData
 ): Promise<UpdateMemberFormState> {
-    const session = await verifySession();
-    if (!session) return { error: "Not authenticated." };
-    const { account_id } = session;
+  const session = await verifySession();
+  if (!session) return { error: "Not authenticated." };
+  const { account_id } = session;
 
-    try {
-        const name = formData.get("name") as string;
-        const institution = formData.get("institution") as string;
-        const phoneNum = formData.get("phone_num") as string;
-        const idNo = formData.get("id_no") as string;
+  try {
+    const name = formData.get("name") as string;
+    const institution = formData.get("institution") as string;
+    const phoneNum = formData.get("phone_num") as string;
+    const idNo = formData.get("id_no") as string;
 
-        const scFile = formData.get("sc_link") as File;
-        const sdFile = formData.get("sd_link") as File;
-        const fpFile = formData.get("fp_link") as File;
+    const scKey = formData.get("sc_key") as string; 
+    const sdKey = formData.get("sd_key") as string;
+    const fpKey = formData.get("fp_key") as string;
+    const spKey = formData.get("sp_key") as string;
 
-        let scKey: string | null = null;
-        let sdKey: string | null = null;
-        let fpKey: string | null = null;
+    await updateMember(
+      account_id,
+      name,
+      institution,
+      phoneNum,
+      idNo,
+      scKey || null,
+      sdKey || null,
+      fpKey || null,
+      spKey || null
+    );
 
-        if (scFile && scFile.size > 0) {
-            scKey = await uploadFileToR2(scFile, "member-sc", account_id);
-        }
+    revalidatePath("/dashboard/iecom/team");
+    return { message: "Your details have been saved successfully." };
 
-        if (sdFile && sdFile.size > 0) {
-            sdKey = await uploadFileToR2(sdFile, "member-sd", account_id);
-        }
-
-        if (fpFile && fpFile.size > 0) {
-            fpKey = await uploadFileToR2(fpFile, "member-fp", account_id);
-        }
-
-        await updateMember(
-            account_id,
-            name,
-            institution,
-            phoneNum,
-            idNo,
-            scKey,
-            sdKey,
-            fpKey
-        );
-
-        revalidatePath("/dashboard/iecom/team");
-        return { message: "Your details have been saved successfully." };
-
-    } catch (e) {
-        console.error("Update Member Error:", e);
-        return { error: "An error occurred while saving your details." };
-    }
+  } catch (e) {
+    console.error("Update Member Error:", e);
+    return { error: "An error occurred while saving your details." };
+  }
 }
 
 export async function updateBilling(

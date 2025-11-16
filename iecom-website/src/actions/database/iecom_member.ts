@@ -8,7 +8,8 @@ export async function updateMember(
   idNo: string,
   scKey: string | null,
   sdKey: string | null,
-  fpKey: string | null
+  fpKey: string | null,
+  spKey: string | null
 ) {
   await DB`
     UPDATE iecom_member
@@ -26,6 +27,9 @@ export async function updateMember(
 
       fp_link = COALESCE(${fpKey}::text, fp_link),
       fp_verified = CASE WHEN ${fpKey}::text IS NOT NULL THEN 0 ELSE fp_verified END
+
+      sp_link = COALESCE(${spKey}::text, sp_link),
+      sp_verified = CASE WHEN ${spKey}::text IS NOT NULL THEN 0 ELSE sp_verified END
       
     WHERE account_id = ${accountId}
   `;
