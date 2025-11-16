@@ -343,7 +343,7 @@ export function TeamMemberDialog({
 
                     <Field>
                     <div className="flex justify-between items-center mb-1">
-                        <FieldLabel>Proof of following</FieldLabel>
+                        <FieldLabel>Proof of sharing & following</FieldLabel>
                         <VerificationStatusBadge status={member.fp_verified} />
                     </div>
                     <CustomFileInput
