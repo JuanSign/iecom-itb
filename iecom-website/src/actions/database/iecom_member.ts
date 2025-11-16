@@ -10,26 +10,23 @@ export async function updateMember(
   sdKey: string | null,
   fpKey: string | null
 ) {
-  let updateQuery = DB`
+  await DB`
     UPDATE iecom_member
     SET
       name = ${name},
       institution = ${institution},
       phone_num = ${phoneNum},
-      id_no = ${idNo}
+      id_no = ${idNo},
+      
+      sc_link = COALESCE(${scKey}::text, sc_link),
+      sc_verified = CASE WHEN ${scKey}::text IS NOT NULL THEN 0 ELSE sc_verified END,
+
+      sd_link = COALESCE(${sdKey}::text, sd_link),
+      sd_verified = CASE WHEN ${sdKey}::text IS NOT NULL THEN 0 ELSE sd_verified END,
+
+      fp_link = COALESCE(${fpKey}::text, fp_link),
+      fp_verified = CASE WHEN ${fpKey}::text IS NOT NULL THEN 0 ELSE fp_verified END
+      
+    WHERE account_id = ${accountId}
   `;
-
-  if (scKey) {
-    updateQuery = DB`${updateQuery}, sc_link = ${scKey}, sc_verified = 0`;
-  }
-  
-  if (sdKey) {
-    updateQuery = DB`${updateQuery}, sd_link = ${sdKey}, sd_verified = 0`;
-  }
-
-  if (fpKey) {
-    updateQuery = DB`${updateQuery}, fp_link = ${fpKey}, fp_verified = 0`;
-  }
-
-  await DB`${updateQuery} WHERE account_id = ${accountId}`;
 }
