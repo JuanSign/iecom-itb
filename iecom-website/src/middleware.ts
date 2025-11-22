@@ -11,6 +11,10 @@ const protectedRoutes = ['/dashboard'];
 const authRoutes = ['/register', '/login'];
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    return NextResponse.next();
+  }
+  
   const path = request.nextUrl.pathname;
   const sessionCookie = request.cookies.get('session')?.value;
 
