@@ -4,17 +4,23 @@ import React, { useState, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { UploadCloud, X } from "lucide-react";
+import { 
+  UploadCloud, 
+  X, 
+  FileText, 
+  ExternalLink, 
+  RefreshCw,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { cn } from "@/lib/utils"; 
 
 export function isImageUrl(url: string | null): boolean {
   if (!url) return false;
   try {
     const path = new URL(url).pathname.toLowerCase();
     return path.endsWith(".jpg") || path.endsWith(".jpeg") || path.endsWith(".png");
-  } catch (e) {
-    console.log(e);
+  } catch {
     return false;
   }
 }
@@ -25,83 +31,130 @@ export function CustomFileInput({
   accept,
   currentFileUrl,
   disabled = false,
+  statusBadge,
 }: {
   name: string;
   label: string;
   accept: string;
   currentFileUrl: string | null;
   disabled?: boolean;
+  statusBadge?: React.ReactNode;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const id = useId();
+  const isImage = isImageUrl(currentFileUrl);
+
+  const showCard = currentFileUrl && !file;
 
   return (
-    <Field>
-      <div>
-        <FieldLabel htmlFor={disabled ? undefined : id}>{label}</FieldLabel>
+    <Field className="w-full">
+      <div className="flex justify-between items-center mb-2">
+        <FieldLabel htmlFor={disabled ? undefined : id} className="font-semibold">
+            {label}
+        </FieldLabel>
+        {statusBadge}
+      </div>
+      
+      <div className="flex flex-col gap-3"> 
         
-        <div className="mt-1 flex flex-col gap-2"> 
-          
-          {/* Show Image or Link */}
-          {currentFileUrl && (
-            isImageUrl(currentFileUrl) ? (
-              <div className="my-2">
-                <p className="text-sm font-medium text-muted-foreground mb-2">Current File:</p>
-                <Image
-                  src={currentFileUrl}
-                  alt={label}
-                  width={128}
-                  height={128}
-                  className="h-32 w-32 rounded-md object-cover"
-                />
-              </div>
-            ) : (
-              <Link
-                href={currentFileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-500 underline"
-              >
-                View Current File (PDF)
-              </Link>
-            )
-          )}
+        {!disabled && (
+           <Input
+             id={id}
+             name={name}
+             type="file"
+             accept={accept}
+             className="sr-only"
+             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+           />
+        )}
 
-          {!disabled && (
-            <> 
-              <label
-                htmlFor={id}
-                className="relative flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-muted bg-background px-4 py-6 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted/50"
-              >
-                <UploadCloud className="h-6 w-6" />
-                <span>{file ? file.name : (currentFileUrl ? "Upload to replace" : "Click or drag to upload")}</span>
-                <Input
-                  id={id}
-                  name={name}
-                  type="file"
-                  accept={accept}
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                />
-              </label>
-              {file && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive"
-                  onClick={() => {
-                    setFile(null);
-                    const fileInput = document.getElementById(id) as HTMLInputElement;
-                    if (fileInput) fileInput.value = "";
-                  }}
+        {showCard && (
+          <div className="relative group overflow-hidden rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-all">
+            <div className="flex items-center gap-4 p-3">
+              {/* Thumbnail */}
+              <div className="shrink-0 relative h-12 w-12 rounded-md overflow-hidden bg-background border flex items-center justify-center">
+                {isImage ? (
+                  <Image
+                    src={currentFileUrl!}
+                    alt={label}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <FileText className="h-6 w-6 text-blue-600" />
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate pr-4">
+                  {isImage ? "Image File" : "Document File"}
+                </p>
+                <Link
+                  href={currentFileUrl!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-0.5 w-fit"
                 >
-                  <X className="mr-2 h-4 w-4" /> Clear selection
-                </Button>
+                  <ExternalLink className="h-3 w-3" />
+                  View Original
+                </Link>
+              </div>
+
+              {!disabled && (
+                 <label 
+                    htmlFor={id} 
+                    className="cursor-pointer p-2 hover:bg-background rounded-full transition-colors text-muted-foreground hover:text-foreground shadow-sm border border-transparent hover:border-border"
+                    title="Replace file"
+                 >
+                    <RefreshCw className="h-4 w-4" />
+                 </label>
               )}
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
+
+        {(!showCard && !disabled) && (
+          <div className="relative">
+            <label
+              htmlFor={id}
+              className={cn(
+                "relative flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 transition-all",
+                file 
+                  ? "border-primary/50 bg-primary/5" 
+                  : "border-muted-foreground/25 bg-muted/20 hover:bg-muted/30 hover:border-primary/50"
+              )}
+            >
+              <div className="rounded-full bg-background p-2 shadow-sm">
+                  <UploadCloud className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="text-center">
+                  <p className="text-sm font-medium">
+                      {file ? file.name : "Click to upload"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                      {file ? "Ready to upload" : accept.replace(/,/g, ", ").toUpperCase()}
+                  </p>
+              </div>
+            </label>
+
+            {file && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 h-6 w-6 text-muted-foreground hover:text-destructive"
+                onClick={(e) => {
+                  e.preventDefault(); 
+                  setFile(null);
+                  const fileInput = document.getElementById(id) as HTMLInputElement;
+                  if (fileInput) fileInput.value = "";
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </Field>
   );

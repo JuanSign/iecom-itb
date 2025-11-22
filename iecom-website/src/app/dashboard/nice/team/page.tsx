@@ -80,7 +80,7 @@ function LockedSection({
 const getTeamStatusText = (status: number) => {
   switch (status) {
     case 0: return "Waiting for Team Member Verification";
-    case 1: return "Documents Submission Open"; // Changed text slightly to fit context
+    case 1: return "Documents Submission Open";
     case 2: return "Accepted";
     default: return "Unknown Status";
   }
@@ -117,7 +117,7 @@ export default async function TeamPage() {
                       {teamStatusText}
                     </div>
                     <TeamStatusBadge 
-                      status={teamStatus} 
+                      statusText={getTeamStatusText(team.status)}
                       notes={team.notes} 
                     />
                 </div>
@@ -191,7 +191,6 @@ export default async function TeamPage() {
               step="STEP 2"
               bmcLink={team.bmc_link}
               pooLink={team.poo_link}
-              // Using submission_status for verification visual
               submissionStatus={team.submission_status} 
               className="border-l-emerald-500"
             />

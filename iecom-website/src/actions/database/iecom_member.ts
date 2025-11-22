@@ -26,7 +26,7 @@ export async function updateMember(
       sd_verified = CASE WHEN ${sdKey}::text IS NOT NULL THEN 0 ELSE sd_verified END,
 
       fp_link = COALESCE(${fpKey}::text, fp_link),
-      fp_verified = CASE WHEN ${fpKey}::text IS NOT NULL THEN 0 ELSE fp_verified END
+      fp_verified = CASE WHEN ${fpKey}::text IS NOT NULL THEN 0 ELSE fp_verified END,
 
       sp_link = COALESCE(${spKey}::text, sp_link),
       sp_verified = CASE WHEN ${spKey}::text IS NOT NULL THEN 0 ELSE sp_verified END

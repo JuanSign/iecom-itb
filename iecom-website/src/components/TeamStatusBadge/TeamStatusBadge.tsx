@@ -6,68 +6,99 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   Hourglass,
   CheckCircle2,
-  ListRestart,
   ScrollText,
+  Info,
+  BookText,
+  CreditCard,
+  AlertCircle,
 } from "lucide-react";
+
+// --- CONFIGURATION ---
 
 type StatusConfig = {
   icon: React.ReactNode;
   className: string;
+  label: string; // To ensure consistent labeling
 };
 
-const statusMap: Record<number, StatusConfig> = {
-  0: {
-    icon: <Hourglass className="h-4 w-4" />,
-    className: "text-yellow-600 bg-yellow-50 border-yellow-300 hover:bg-yellow-100",
-  },
-  1: {
-    icon: <Hourglass className="h-4 w-4" />,
-    className: "text-yellow-600 bg-yellow-50 border-yellow-300 hover:bg-yellow-100",
-  },
-  2: {
-    icon: <Hourglass className="h-4 w-4" />,
-    className: "text-yellow-600 bg-yellow-50 border-yellow-300 hover:bg-yellow-100",
-  },
-  3: {
-    icon: <ListRestart className="h-4 w-4" />, 
-    className: "text-destructive bg-destructive/10 border-destructive/50 hover:bg-destructive/20",
-  },
-  4: {
-    icon: <CheckCircle2 className="h-4 w-4" />,
-    className: "text-emerald-600 bg-emerald-50 border-emerald-400 hover:bg-emerald-100",
-  },
-};
+function getStatusConfig(text: string): StatusConfig {
+  const normalizedText = text?.trim();
+
+  switch (normalizedText) {
+    case "Waiting for Team Member Verification":
+      return {
+        icon: <Hourglass className="h-4 w-4" />,
+        label: "Verification Pending",
+        className:
+          "text-yellow-500 border-yellow-500/30 bg-yellow-500/10 hover:bg-yellow-500/20 hover:border-yellow-500/50",
+      };
+
+    case "Waiting for Payment":
+      return {
+        icon: <CreditCard className="h-4 w-4" />,
+        label: "Payment Pending",
+        className:
+          "text-orange-500 border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 hover:border-orange-500/50",
+      };
+
+    case "Accepted":
+      return {
+        icon: <CheckCircle2 className="h-4 w-4" />,
+        label: "Team Accepted",
+        className:
+          "text-emerald-500 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 hover:border-emerald-500/50",
+      };
+
+    case "Documents Submission Open":
+      return {
+        icon: <BookText className="h-4 w-4" />,
+        label: "Submission Open",
+        className:
+          "text-blue-500 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500/50",
+      };
+
+    default:
+      return {
+        icon: <AlertCircle className="h-4 w-4" />,
+        label: text || "Unknown Status",
+        className:
+          "text-muted-foreground border-border bg-muted/50 hover:bg-muted",
+      };
+  }
+}
 
 export function TeamStatusBadge({
-  status,
+  statusText,
   notes,
 }: {
-  status: number | null;
+  statusText: string;
+  status?: number | null; 
   notes: string[] | null;
 }) {
-  const finalStatus = statusMap[status || 0] || statusMap[0]; 
-  const notesCount = notes?.length ?? 0;
+  const config = getStatusConfig(statusText);
+
+  const rawNotes = notes || [];
+  const notesCount = rawNotes.length;
   const hasNotes = notesCount > 0;
 
-  let notesToDisplay: string[] = notes || [];
-  const defaultNote = "No admin notes available for this status.";
-  
-  if (!hasNotes) {
-      notesToDisplay = [defaultNote];
-  }
+  const notesToDisplay = hasNotes ? rawNotes : ["No specific notes provided."];
 
   const StatusIcon = (
     <Button
       variant="outline"
       size="icon"
-      className={`relative h-9 w-9 p-0 ${finalStatus.className}`}
+      className={cn(
+        "relative h-9 w-9 transition-all duration-200 shadow-sm",
+        config.className
+      )}
     >
-      {finalStatus.icon}
+      {config.icon}
       {hasNotes && (
-        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-white text-[10px] font-bold ring-2 ring-background">
+        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground ring-2 ring-background shadow-sm">
           {notesCount}
         </span>
       )}
@@ -75,7 +106,7 @@ export function TeamStatusBadge({
   );
 
   if (!hasNotes) {
-    return StatusIcon;
+    return <div title={config.label}>{StatusIcon}</div>;
   }
 
   return (
@@ -83,17 +114,45 @@ export function TeamStatusBadge({
       <PopoverTrigger asChild>
         {StatusIcon}
       </PopoverTrigger>
-      <PopoverContent className="w-80">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <ScrollText className="h-4 w-4 text-muted-foreground" />
-            <h4 className="font-medium leading-none">Admin Notes ({notesCount})</h4>
+      <PopoverContent 
+        className="w-80 p-0 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl" 
+        align="end"
+        sideOffset={8}
+      >
+        <div className="flex items-center gap-3 border-b border-border bg-muted/40 p-4">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-background border border-border shadow-sm">
+            <ScrollText className="h-4 w-4 text-foreground" />
           </div>
-          <ul className="list-disc space-y-2 pl-5 text-sm">
+          <div className="flex flex-col overflow-hidden">
+            <h4 className="text-sm font-semibold leading-none tracking-tight">
+              Admin Notes
+            </h4>
+            <p className="text-xs text-muted-foreground mt-1 truncate" title={statusText}>
+              Status: <span className="font-medium text-foreground">{config.label}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+          <div className="flex flex-col gap-2">
             {notesToDisplay.map((note, index) => (
-              <li key={index}>{note}</li>
+              <div
+                key={index}
+                className="relative flex gap-3 rounded-md border border-border/50 bg-muted/30 p-3 text-sm transition-colors hover:bg-muted/60"
+              >
+                <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <span className="text-foreground/90 text-xs leading-relaxed">
+                  {note}
+                </span>
+              </div>
             ))}
-          </ul>
+          </div>
+        </div>
+
+        <div className="bg-muted/40 p-2 border-t border-border text-center">
+           <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+             {notesCount} {notesCount === 1 ? 'Message' : 'Messages'}
+           </span>
         </div>
       </PopoverContent>
     </Popover>

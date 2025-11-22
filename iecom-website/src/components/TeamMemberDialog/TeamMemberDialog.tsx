@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Eye,
@@ -23,9 +23,12 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
+  ExternalLink
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+
+// IMPORTANT: Update this path to your actual file location
 import { CustomFileInput, isImageUrl } from "../CustomFileInput/CustomFileInput";
 
 // --- Actions ---
@@ -71,127 +74,104 @@ function VerificationStatusBadge({ status }: { status: number }) {
   );
 }
 
-function ViewMemberDetails({ member }: { member: Member }) {
-  const renderFile = (url: string | null, label: string) => {
-    if (!url) {
-      return <p className="text-sm text-muted-foreground">Not provided</p>;
-    }
+// --- MOVED OUTSIDE: FileDisplayCard ---
+function FileDisplayCard({ url, label, status }: { url: string | null, label: string, status: number }) {
+  if (!url) return null; 
 
-    if (isImageUrl(url)) {
-      return (
-        <Link href={url} target="_blank" rel="noopener noreferrer">
-          <Image
-            src={url}
-            alt={label}
-            width={128}
-            height={128}
-            className="h-32 w-32 rounded-md object-cover border mt-2 hover:opacity-90 transition-opacity"
-          />
-        </Link>
-      );
-    }
-
-    return (
-      <Button asChild variant="link" className="p-0 h-auto mt-1">
-        <Link href={url} target="_blank" rel="noopener noreferrer">
-          View {label}
-        </Link>
-      </Button>
-    );
-  };
+  const isImage = isImageUrl(url);
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Personal Info Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field>
-          <FieldLabel>Full Name</FieldLabel>
-          <p className="text-sm pt-1 font-medium">
-            {member.name || <span className="text-muted-foreground">N/A</span>}
-          </p>
-        </Field>
-        <Field>
-          <FieldLabel>Email</FieldLabel>
-          <p className="text-sm pt-1">{member.email}</p>
-        </Field>
-        <Field>
-          <FieldLabel>Institution</FieldLabel>
-          <p className="text-sm pt-1">
-            {member.institution || <span className="text-muted-foreground">N/A</span>}
-          </p>
-        </Field>
-        <Field>
-          <FieldLabel>Phone Number</FieldLabel>
-          <p className="text-sm pt-1">
-            {member.phone_num || <span className="text-muted-foreground">N/A</span>}
-          </p>
-        </Field>
-        <Field>
-          <FieldLabel>ID Number</FieldLabel>
-          <p className="text-sm pt-1">
-            {member.id_no || <span className="text-muted-foreground">N/A</span>}
-          </p>
-        </Field>
+    <div className="flex flex-col space-y-2">
+      <div className="flex justify-between items-center">
+          <span className="text-sm font-medium text-muted-foreground">{label}</span>
+          <VerificationStatusBadge status={status} />
       </div>
+      
+      <div className="group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+          {/* Thumbnail / Icon */}
+          <div className="h-10 w-10 shrink-0 rounded bg-muted flex items-center justify-center overflow-hidden border">
+              {isImage ? (
+                  <Image src={url} alt={label} width={40} height={40} className="h-full w-full object-cover" />
+              ) : (
+                  <FileText className="h-5 w-5 text-primary" />
+              )}
+          </div>
+          
+          {/* Text Content */}
+          <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                  {isImage ? "Image Attachment" : "Document Attachment"}
+              </p>
+              <Link 
+                  href={url} 
+                  target="_blank" 
+                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+              >
+                  <ExternalLink className="h-3 w-3" /> View File
+              </Link>
+          </div>
+      </div>
+    </div>
+  );
+}
 
-      <div className="border-t my-2" />
+// --- View Component ---
+function ViewMemberDetails({ member }: { member: Member }) {
+  return (
+    <div className="flex flex-col gap-8">
+      {/* Personal Info Section */}
+      <div className="space-y-4">
+         <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            Personal Information
+         </h4>
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-4 p-4 border rounded-lg bg-muted/10">
+            <div>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Full Name</span>
+                <p className="text-sm font-medium mt-1">{member.name || "-"}</p>
+            </div>
+            <div>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</span>
+                <p className="text-sm font-medium mt-1">{member.email}</p>
+            </div>
+            <div>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Institution</span>
+                <p className="text-sm font-medium mt-1">{member.institution || "-"}</p>
+            </div>
+            <div>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Phone</span>
+                <p className="text-sm font-medium mt-1">{member.phone_num || "-"}</p>
+            </div>
+             <div>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">ID No.</span>
+                <p className="text-sm font-medium mt-1">{member.id_no || "-"}</p>
+            </div>
+         </div>
+      </div>
 
       {/* Documents Section */}
       <div className="space-y-4">
-        <h4 className="text-sm font-semibold text-muted-foreground mb-2">Documents</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          
-          <Field>
-            <div className="flex items-center justify-between mb-1">
-              <FieldLabel>Student Card (SC)</FieldLabel>
-              <VerificationStatusBadge status={member.sc_verified} />
-            </div>
-            {renderFile(member.sc_link, "Student Card")}
-          </Field>
-
-          <Field>
-            <div className="flex items-center justify-between mb-1">
-              <FieldLabel>PDDIKTI Data (SD)</FieldLabel>
-              <VerificationStatusBadge status={member.sd_verified} />
-            </div>
-            {renderFile(member.sd_link, "PDDIKTI Data")}
-          </Field>
-
-          <Field>
-            <div className="flex items-center justify-between mb-1">
-              <FieldLabel>Proof of Following (FP)</FieldLabel>
-              <VerificationStatusBadge status={member.fp_verified} />
-            </div>
-            {renderFile(member.fp_link, "Follow Proof")}
-          </Field>
-
-          {/* NEW: Share Proof */}
-          <Field>
-            <div className="flex items-center justify-between mb-1">
-              <FieldLabel>Proof of Sharing (SP)</FieldLabel>
-              <VerificationStatusBadge status={member.sp_verified} />
-            </div>
-            {renderFile(member.sp_link, "Share Proof")}
-          </Field>
+        <h4 className="text-sm font-semibold text-foreground">Submitted Documents</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FileDisplayCard url={member.sc_link} label="Student Card" status={member.sc_verified} />
+            <FileDisplayCard url={member.sd_link} label="PDDIKTI Data" status={member.sd_verified} />
+            <FileDisplayCard url={member.fp_link} label="Proof of Following" status={member.fp_verified} />
+            <FileDisplayCard url={member.sp_link} label="Proof of Sharing" status={member.sp_verified ?? 0} />
         </div>
       </div>
 
       {/* Notes Section */}
       {member.notes && member.notes.length > 0 && (
-        <>
-          <div className="border-t my-2" />
-          <div className="rounded-md bg-muted/50 p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
+        <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2 text-orange-700">
+              <FileText className="h-4 w-4" />
               <h4 className="text-sm font-semibold">Admin Notes</h4>
             </div>
-            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+            <ul className="list-disc list-inside text-sm text-orange-800/80 space-y-1">
               {member.notes.map((note, idx) => (
                 <li key={idx}>{note}</li>
               ))}
             </ul>
           </div>
-        </>
       )}
     </div>
   );
@@ -251,7 +231,7 @@ export function TeamMemberDialog({
       { inputName: "sc_link", folder: "member-sc", keyName: "sc_key", label: "Student Card" },
       { inputName: "sd_link", folder: "member-sd", keyName: "sd_key", label: "PDDIKTI" },
       { inputName: "fp_link", folder: "member-fp", keyName: "fp_key", label: "Follow Proof" },
-      { inputName: "sp_link", folder: "member-sp", keyName: "sp_key", label: "Share Proof" }, // NEW
+      { inputName: "sp_link", folder: "member-sp", keyName: "sp_key", label: "Share Proof" }, 
     ];
 
     try {
@@ -310,7 +290,10 @@ export function TeamMemberDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent 
+      className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0"
+      onOpenAutoFocus={(e) => e.preventDefault()} 
+      >
         
         {/* Header */}
         <div className="p-6 pb-2">
@@ -322,7 +305,7 @@ export function TeamMemberDialog({
             </DialogTitle>
             <DialogDescription>
               {isCurrentUser
-                ? "Max file size: 1MB per document."
+                ? "Make changes to your profile. Max file size 1MB."
                 : "You are viewing this member's details."}
             </DialogDescription>
           </DialogHeader>
@@ -331,121 +314,82 @@ export function TeamMemberDialog({
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto p-6 pt-2">
           {isCurrentUser ? (
-            <form id="update-member-form" onSubmit={handleCustomSubmit} className="h-full">
-              <FieldGroup className="flex flex-col gap-6">
-                {/* --- Personal Details --- */}
+            <form id="update-member-form" onSubmit={handleCustomSubmit} className="h-full space-y-8">
+                
+                {/* Personal Info */}
                 <div className="space-y-4">
-                  <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2">Personal Information</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field>
-                      <FieldLabel htmlFor="name">Full Name</FieldLabel>
-                      <Input
-                        id="name"
-                        name="name"
-                        defaultValue={member.name ?? ""}
-                        placeholder="e.g. John Doe"
-                        className="mt-1"
-                      />
-                    </Field>
-
-                    <Field>
-                      <FieldLabel htmlFor="institution">Institution</FieldLabel>
-                      <Input
-                        id="institution"
-                        name="institution"
-                        defaultValue={member.institution ?? ""}
-                        placeholder="University name"
-                        className="mt-1"
-                      />
-                    </Field>
-
-                    <Field>
-                      <FieldLabel htmlFor="phone_num">Phone Number</FieldLabel>
-                      <Input
-                        id="phone_num"
-                        name="phone_num"
-                        defaultValue={member.phone_num ?? ""}
-                        placeholder="+62..."
-                        className="mt-1"
-                      />
-                    </Field>
-
-                    <Field>
-                      <FieldLabel htmlFor="id_no">Student Number (NIM)</FieldLabel>
-                      <Input
-                        id="id_no"
-                        name="id_no"
-                        defaultValue={member.id_no ?? ""}
-                        placeholder="e.g. 12345678"
-                        className="mt-1"
-                      />
-                    </Field>
-                  </div>
+                    <div className="flex items-center justify-between border-b pb-2">
+                        <h4 className="text-base font-semibold">Personal Details</h4>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <Field>
+                            <FieldLabel htmlFor="name">Full Name</FieldLabel>
+                            <Input id="name" name="name" defaultValue={member.name ?? ""} placeholder="e.g. John Doe" />
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="institution">Institution</FieldLabel>
+                            <Input id="institution" name="institution" defaultValue={member.institution ?? ""} placeholder="University name" />
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="phone_num">Phone Number</FieldLabel>
+                            <Input id="phone_num" name="phone_num" defaultValue={member.phone_num ?? ""} placeholder="+62..." />
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="id_no">Student ID Number</FieldLabel>
+                            <Input id="id_no" name="id_no" defaultValue={member.id_no ?? ""} placeholder="e.g. 12345678" />
+                        </Field>
+                    </div>
                 </div>
 
-                {/* --- Documents --- */}
+                {/* Documents */}
                 <div className="space-y-4">
-                  <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2">Documents (Max 1MB each)</h4>
-                  
-                  {/* Student Card */}
-                  <Field>
-                    <div className="flex justify-between items-center mb-1">
-                      <FieldLabel>Student Card</FieldLabel>
-                      <VerificationStatusBadge status={member.sc_verified} />
+                    <div className="flex items-center justify-between border-b pb-2">
+                        <h4 className="text-base font-semibold">Documents</h4>
+                        <span className="text-xs text-muted-foreground">Max 1MB per file</span>
                     </div>
-                    <CustomFileInput
-                      name="sc_link"
-                      label="Upload Student Card"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      currentFileUrl={member.sc_link}
-                      disabled={!isCurrentUser}
-                    />
-                  </Field>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {/* Student Card */}
+                        <CustomFileInput
+                            name="sc_link"
+                            label="Student Card"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            currentFileUrl={member.sc_link}
+                            disabled={!isCurrentUser}
+                            statusBadge={<VerificationStatusBadge status={member.sc_verified} />}
+                        />
 
-                  {/* PDDIKTI */}
-                  <Field>
-                    <div className="flex justify-between items-center mb-1">
-                      <FieldLabel>PDDIKTI Screenshot</FieldLabel>
-                      <VerificationStatusBadge status={member.sd_verified} />
-                    </div>
-                    <CustomFileInput
-                      name="sd_link"
-                      label="Upload PDDIKTI Screenshot"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      currentFileUrl={member.sd_link}
-                      disabled={!isCurrentUser}
-                    />
-                  </Field>
+                        {/* PDDIKTI */}
+                        <CustomFileInput
+                            name="sd_link"
+                            label="PDDIKTI Data"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            currentFileUrl={member.sd_link}
+                            disabled={!isCurrentUser}
+                            statusBadge={<VerificationStatusBadge status={member.sd_verified} />}
+                        />
 
-                  <Field>
-                    <div className="flex justify-between items-center mb-1">
-                      <FieldLabel>Proof of Following @iecom2026</FieldLabel>
-                      <VerificationStatusBadge status={member.fp_verified} />
-                    </div>
-                    <CustomFileInput
-                      name="fp_link"
-                      label="Upload Follow Screenshot"
-                      accept=".jpg,.jpeg,.png"
-                      currentFileUrl={member.fp_link}
-                      disabled={!isCurrentUser}
-                    />
-                  </Field>
+                        {/* Follow Proof */}
+                        <CustomFileInput
+                            name="fp_link"
+                            label="Follow (@iecom2026) Proof"
+                            accept=".jpg,.jpeg,.png"
+                            currentFileUrl={member.fp_link}
+                            disabled={!isCurrentUser}
+                            statusBadge={<VerificationStatusBadge status={member.fp_verified} />}
+                        />
 
-                  <Field>
-                    <div className="flex justify-between items-center mb-1">
-                      <FieldLabel>Proof of Sharing @iecom2026</FieldLabel>
-                      <VerificationStatusBadge status={member.sp_verified ?? 0} />
+                        {/* Share Proof */}
+                        <CustomFileInput
+                            name="sp_link"
+                            label="Share (@iecom2026) Proof"
+                            accept=".jpg,.jpeg,.png"
+                            currentFileUrl={member.sp_link}
+                            disabled={!isCurrentUser}
+                            statusBadge={<VerificationStatusBadge status={member.sp_verified ?? 0} />}
+                        />
                     </div>
-                    <CustomFileInput
-                      name="sp_link"
-                      label="Upload Share Screenshot"
-                      accept=".jpg,.jpeg,.png"
-                      currentFileUrl={member.sp_link}
-                      disabled={!isCurrentUser}
-                    />
-                  </Field>
                 </div>
-              </FieldGroup>
             </form>
           ) : (
             <ViewMemberDetails member={member} />

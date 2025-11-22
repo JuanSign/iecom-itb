@@ -147,14 +147,13 @@ export async function getTeamPageData() {
     try {
         const data = await fetchTeamPageData(account_id);
 
-        // Generate Signed URLs for members
         for (const member of data.members) {
             if(member.sc_link) member.sc_link = await getSignedUrlForR2(member.sc_link);
             if(member.sd_link) member.sd_link = await getSignedUrlForR2(member.sd_link);
             if(member.fp_link) member.fp_link = await getSignedUrlForR2(member.fp_link);
+            if(member.sp_link) member.sp_link = await getSignedUrlForR2(member.sp_link);
         }
 
-        // Generate Signed URLs for team documents
         if(data.team.pp_link) data.team.pp_link = await getSignedUrlForR2(data.team.pp_link);
 
         return data;

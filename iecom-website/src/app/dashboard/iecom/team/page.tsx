@@ -116,7 +116,7 @@ export default async function TeamPage() {
                       {teamStatusText}
                     </div>
                     <TeamStatusBadge 
-                      status={teamStatus} 
+                      statusText={getTeamStatusText(team.status)}
                       notes={team.notes} 
                     />
                 </div>
@@ -127,7 +127,7 @@ export default async function TeamPage() {
 
           <CardContent className="pt-6">
             <h4 className="text-lg font-semibold mb-4">
-              Members ({members.length})
+              Members
             </h4>
             <div className="flex flex-col gap-4">
               {members.map((member) => (
@@ -182,10 +182,7 @@ export default async function TeamPage() {
               step="STEP 2"
               title="Payment"
               description="Upload your proof of payment for the registration fee."
-              subtext={isPaymentLocked 
-                  ? "This step will unlock after all member details are accepted." 
-                  : "This step will unlock after your Core Documents (SP & OL) are accepted."
-              }
+              subtext={"This step will unlock after all member details are accepted."}
               borderColorClass="border-l-emerald-500"
             />
         ) : (
