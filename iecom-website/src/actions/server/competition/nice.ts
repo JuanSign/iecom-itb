@@ -91,7 +91,7 @@ export async function joinTeam(
     }
 
     const { teamCode } = validatedFields.data;
-    const { account_id } = session;
+    const { account_id , email} = session;
 
     try {
         const team = await DB`SELECT team_id FROM nice_team WHERE code = ${teamCode}`;
@@ -99,7 +99,7 @@ export async function joinTeam(
 
         const teamId = team[0].team_id;
         
-        await addMemberToTeam(teamId, account_id);
+        await addMemberToTeam(teamId, account_id, email);
         
         await addEventToAccount(account_id, "NICE");
         await refreshSession(account_id);

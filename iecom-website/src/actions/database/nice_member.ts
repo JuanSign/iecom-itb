@@ -11,7 +11,7 @@ export async function updateMember(
   fpKey: string | null
 ) {
   await DB`
-    UPDATE iecom_member
+    UPDATE nice_member
     SET
       name = ${name},
       institution = ${institution},

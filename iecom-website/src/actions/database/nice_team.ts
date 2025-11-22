@@ -30,10 +30,10 @@ export async function insertNewTeam(
     if (result.length === 0) throw new Error("Failed to create team record");
 }
 
-export async function addMemberToTeam(teamId: string, accountId: string) {
+export async function addMemberToTeam(teamId: string, accountId: string, email: string) {
     const result = await DB`
-        INSERT INTO nice_member (team_id, account_id, role)
-        SELECT ${teamId}, ${accountId}, 'MEMBER'
+        INSERT INTO nice_member (team_id, account_id, email, role)
+        SELECT ${teamId}, ${accountId}, ${email}, 'MEMBER'
         WHERE (
             SELECT count FROM nice_team WHERE team_id = ${teamId}
         ) < 3

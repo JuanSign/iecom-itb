@@ -128,7 +128,7 @@ export default async function TeamPage() {
 
           <CardContent className="pt-6">
             <h4 className="text-lg font-semibold mb-4">
-              Members ({members.length})
+              Members
             </h4>
             <div className="flex flex-col gap-4">
               {members.map((member) => (
