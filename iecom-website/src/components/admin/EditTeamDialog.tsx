@@ -3,43 +3,35 @@
 import { useState } from "react";
 import { updateTeamStatus } from "@/actions/server/admin";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Edit, Loader2 } from "lucide-react";
-import { AdminTeam } from "./AdminDataTable"; // Import the type
+import { Edit, Loader2, Send, Trash2 } from "lucide-react";
+import { AdminTeam } from "./AdminDataTable";
 
-export function EditTeamDialog({ 
-  team, 
-  competition 
-}: { 
-  team: AdminTeam; 
-  competition: "NICE" | "IECOM" 
-}) {
+export function EditTeamDialog({ team, competition }: { team: AdminTeam; competition: "NICE" | "IECOM" }) {
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const handleUpdate = async (formData: FormData) => {
         setIsLoading(true);
         const field = formData.get("field") as string;
-        const value = parseInt(formData.get("value") as string);
-        const note = formData.get("note") as string;
-
-        const res = await updateTeamStatus(competition, team.team_id, field, value, note);
+        const value = formData.get("value") as string;
+        
+        const res = await updateTeamStatus(competition, team.team_id, field, value);
         setIsLoading(false);
         
         if(res?.error) toast.error(res.error);
-        else {
-            toast.success("Status updated successfully");
-            setIsOpen(false);
-        }
+        else toast.success(res.message);
+    };
+
+    const handleDeleteNote = async (noteText: string) => {
+        const res = await updateTeamStatus(competition, team.team_id, "notes", noteText, "remove_note");
+        if(res?.error) toast.error("Failed to delete note");
+        else toast.success("Note deleted");
     };
 
     return (
@@ -49,47 +41,108 @@ export function EditTeamDialog({
                     <Edit className="h-3 w-3 mr-2" /> Manage
                 </Button>
             </DialogTrigger>
-            <DialogContent className="bg-zinc-900 border-zinc-800 text-white sm:max-w-[425px]">
+            <DialogContent className="bg-zinc-900 border-zinc-800 text-white sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Manage Team</DialogTitle>
-                    <DialogDescription className="text-zinc-500">
-                        {team.team_name} ({team.code})
-                    </DialogDescription>
+                    <DialogDescription className="text-zinc-500">{team.team_name} (#{team.code})</DialogDescription>
                 </DialogHeader>
                 
                 <div className="grid gap-6 py-4">
                     
-                    {/* SECTION 1: Payment Verification */}
-                    <div className="space-y-3 border-b border-zinc-800 pb-4">
-                        <h4 className="text-sm font-semibold text-zinc-300">Payment Verification</h4>
-                        <form action={handleUpdate} className="space-y-3">
-                            <input type="hidden" name="field" value="pp_verified" />
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button type="submit" name="value" value="2" size="sm" className="bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>
-                                    {isLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : "Mark Verified"}
-                                </Button>
-                                <Button type="submit" name="value" value="1" size="sm" className="bg-red-600 hover:bg-red-700" disabled={isLoading}>
-                                    Reject
-                                </Button>
+                    {/* 1. General Status (For both comps) */}
+                    <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-zinc-300">Team Status (Pipeline)</h4>
+                        <form action={handleUpdate} className="flex gap-2 items-end">
+                            <input type="hidden" name="field" value="status" />
+                            <div className="w-full">
+                                <Select name="value" defaultValue={String(team.status)}>
+                                    <SelectTrigger className="bg-zinc-950 border-zinc-700">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                                        <SelectItem value="0">0 - Waiting for Members</SelectItem>
+                                        <SelectItem value="1">1 - {competition === "IECOM" ? "Waiting Payment" : "Waiting Submission"}</SelectItem>
+                                        <SelectItem value="2">2 - Accepted / Active</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <Input name="note" placeholder="Reason for rejection (optional)" className="bg-zinc-950 border-zinc-700 text-sm" />
+                            <Button type="submit" size="sm" className="bg-zinc-800 hover:bg-zinc-700" disabled={isLoading}>Update</Button>
                         </form>
                     </div>
 
-                     {/* SECTION 2: Competition Stage */}
-                     <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-zinc-300">Submission Stage</h4>
-                        <form action={handleUpdate} className="grid grid-cols-3 gap-2">
-                            <input type="hidden" name="field" value="submission_status" />
-                            
-                            <Button type="submit" name="value" value="1" size="sm" variant="outline" className="border-zinc-700 hover:bg-zinc-800" disabled={isLoading}>
-                                Stage 1
-                            </Button>
-                            <Button type="submit" name="value" value="2" size="sm" variant="outline" className="border-zinc-700 hover:bg-zinc-800" disabled={isLoading}>
-                                Stage 2
-                            </Button>
-                             <Button type="submit" name="value" value="3" size="sm" variant="outline" className="border-zinc-700 hover:bg-zinc-800" disabled={isLoading}>
-                                Stage 3
+                    {/* 2. IECOM Specific: Payment Status */}
+                    {competition === "IECOM" && (
+                        <div className="space-y-3 pt-4 border-t border-zinc-800">
+                            <h4 className="text-sm font-semibold text-zinc-300">Payment Verification</h4>
+                            <form action={handleUpdate} className="flex gap-2 items-end">
+                                <input type="hidden" name="field" value="pp_verified" />
+                                <div className="w-full">
+                                    <Select name="value" defaultValue={String(team.pp_verified)}>
+                                        <SelectTrigger className="bg-zinc-950 border-zinc-700">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                                            <SelectItem value="0">0 - Pending Check</SelectItem>
+                                            <SelectItem value="1">1 - Rejected</SelectItem>
+                                            <SelectItem value="2">2 - Verified</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button type="submit" size="sm" className="bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>Save</Button>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* 3. NICE Specific: Submission Stage */}
+                    {competition === "NICE" && (
+                        <div className="space-y-3 pt-4 border-t border-zinc-800">
+                            <h4 className="text-sm font-semibold text-zinc-300">Submission Stage</h4>
+                            <form action={handleUpdate} className="flex gap-2 items-end">
+                                <input type="hidden" name="field" value="submission_status" />
+                                <div className="w-full">
+                                    <Select name="value" defaultValue={String(team.submission_status)}>
+                                        <SelectTrigger className="bg-zinc-950 border-zinc-700">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                                            <SelectItem value="0">Stage 0 (Registered)</SelectItem>
+                                            <SelectItem value="1">Stage 1</SelectItem>
+                                            <SelectItem value="2">Stage 2</SelectItem>
+                                            <SelectItem value="3">Stage 3</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700" disabled={isLoading}>Save</Button>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* 4. Notes Manager */}
+                    <div className="space-y-3 pt-4 border-t border-zinc-800">
+                        <h4 className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
+                            <Send className="h-3 w-3" /> Team Notes
+                        </h4>
+                        
+                        {/* List Existing Notes */}
+                        {team.notes && team.notes.length > 0 && (
+                            <div className="space-y-2 mb-3 max-h-40 overflow-y-auto border border-zinc-800 rounded p-2 bg-zinc-950/50">
+                                {team.notes.map((n, i) => (
+                                    <div key={i} className="flex justify-between items-start gap-2 text-xs text-zinc-400 bg-zinc-900 p-2 rounded group">
+                                        <span>{n}</span>
+                                        <button onClick={() => handleDeleteNote(n)} className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-500">
+                                            <Trash2 className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Add New Note */}
+                        <form action={handleUpdate} className="flex gap-2">
+                            <input type="hidden" name="field" value="general_note" />
+                            <Input name="value" required placeholder="Add a new note..." className="bg-zinc-950 border-zinc-700 text-sm" />
+                            <Button type="submit" size="icon" className="bg-zinc-800 hover:bg-zinc-700 shrink-0" disabled={isLoading}>
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
                             </Button>
                         </form>
                     </div>
