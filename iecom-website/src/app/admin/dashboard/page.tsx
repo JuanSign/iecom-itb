@@ -4,6 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { redirect } from "next/navigation";
+import { RefreshBtn } from "@/components/admin/RefreshBtn";
+
+export const dynamic = "force-dynamic"; 
 
 export default async function AdminDashboard() {
   let data;
@@ -24,6 +27,9 @@ export default async function AdminDashboard() {
             <p className="text-zinc-500 mt-1">
               Welcome back, <span className="text-emerald-400 font-mono">{data.username}</span> ({data.role})
             </p>
+          </div>
+          <div>
+            <RefreshBtn/>
           </div>
           <form action={adminLogout}>
             <Button variant="outline" className="border-zinc-700 hover:bg-zinc-900 text-zinc-300">
