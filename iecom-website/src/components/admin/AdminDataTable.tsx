@@ -15,7 +15,14 @@ import { getSignedDocUrl } from "@/actions/server/admin";
 
 // --- TYPES ---
 export type AdminMember = {
-  id: string; name: string; email: string; role: string; phone_num: string;
+  id: string; 
+  name: string; 
+  email: string; 
+  role: string; 
+  phone_num: string;
+  institution: string | null; 
+  id_no: string | null;       
+  
   sc_verified: number; sc_link: string | null;
   fp_verified: number; fp_link: string | null;
   sd_verified: number; sd_link: string | null;

@@ -10,7 +10,12 @@ const nextConfig: NextConfig = {
         hostname: `${process.env.R2_BUCKET_NAME}.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
       }
     ]
-  }
+  },
+  experimental: {
+        serverActions: {
+            bodySizeLimit: '4.5mb',
+        },
+    }
 };
 
 export default nextConfig;

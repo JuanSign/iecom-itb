@@ -91,7 +91,13 @@ export async function getAdminDashboardData() {
       COALESCE(
         json_agg(
           json_build_object(
-            'id', m.account_id, 'name', m.name, 'role', m.role, 'email', m.email, 'phone_num', m.phone_num,
+            'id', m.account_id, 
+            'name', m.name, 
+            'role', m.role, 
+            'email', m.email, 
+            'phone_num', m.phone_num,
+            'institution', m.institution,  -- ADDED THIS
+            'id_no', m.id_no,              -- ADDED THIS
             'sc_verified', m.sc_verified, 'sc_link', m.sc_link,
             'fp_verified', m.fp_verified, 'fp_link', m.fp_link,
             'sd_verified', m.sd_verified, 'sd_link', m.sd_link,
@@ -112,7 +118,13 @@ export async function getAdminDashboardData() {
       COALESCE(
         json_agg(
           json_build_object(
-            'id', m.account_id, 'name', m.name, 'role', m.role, 'email', m.email, 'phone_num', m.phone_num,
+            'id', m.account_id, 
+            'name', m.name, 
+            'role', m.role, 
+            'email', m.email, 
+            'phone_num', m.phone_num,
+            'institution', m.institution,  -- ADDED THIS
+            'id_no', m.id_no,              -- ADDED THIS
             'sc_verified', m.sc_verified, 'sc_link', m.sc_link,
             'fp_verified', m.fp_verified, 'fp_link', m.fp_link,
             'sd_verified', m.sd_verified, 'sd_link', m.sd_link,
