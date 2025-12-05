@@ -92,7 +92,6 @@ export default async function TeamPage() {
   const teamStatus: number = team.status as number;
   const teamStatusText = getTeamStatusText(teamStatus);
 
-  // Logic: Documents are locked if status is 0 (Waiting for members)
   const isDocsLocked = teamStatus === 0; 
 
   return (

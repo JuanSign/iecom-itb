@@ -174,40 +174,29 @@ export async function updateMemberDetails(
     const { account_id } = session;
 
     try {
+        // 1. Get Text Data
         const name = formData.get("name") as string;
         const institution = formData.get("institution") as string;
         const phoneNum = formData.get("phone_num") as string;
         const idNo = formData.get("id_no") as string;
 
-        const scFile = formData.get("sc_link") as File;
-        const sdFile = formData.get("sd_link") as File;
-        const fpFile = formData.get("fp_link") as File;
+        // 2. Get KEYS (Strings) - MATCHING IECOM LOGIC
+        const scKey = formData.get("sc_key") as string;
+        const sdKey = formData.get("sd_key") as string;
+        const fpKey = formData.get("fp_key") as string;
+        const spKey = formData.get("sp_key") as string;
 
-        let scKey: string | null = null;
-        let sdKey: string | null = null;
-        let fpKey: string | null = null;
-
-        if (scFile && scFile.size > 0) {
-            scKey = await uploadFileToR2(scFile, "member-sc", account_id);
-        }
-
-        if (sdFile && sdFile.size > 0) {
-            sdKey = await uploadFileToR2(sdFile, "member-sd", account_id);
-        }
-
-        if (fpFile && fpFile.size > 0) {
-            fpKey = await uploadFileToR2(fpFile, "member-fp", account_id);
-        }
-
+        // 4. Update Database
         await updateMember(
             account_id,
             name,
             institution,
             phoneNum,
             idNo,
-            scKey,
-            sdKey,
-            fpKey
+            scKey || null,
+            sdKey || null,
+            fpKey || null,
+            spKey || null 
         );
 
         revalidatePath("/dashboard/nice/team");

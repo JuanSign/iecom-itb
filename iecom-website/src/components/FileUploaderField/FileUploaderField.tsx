@@ -18,6 +18,10 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { useFormStatus } from "react-dom";
 
+// --- CONFIGURATION ---
+const MAX_FILE_SIZE_MB = 4;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 // --- Types ---
 export type FormState = {
   error?: string;
@@ -35,7 +39,6 @@ export function isImageUrl(url: string | null): boolean {
   }
 }
 
-// --- Sub-Component: Action Buttons ---
 function ActionButtons({ 
   onCancel, 
 }: { 
@@ -128,9 +131,23 @@ export function FileUploaderField({
     }
   }, [formState, resetSelection]);
 
+  // --- NEW: File Change Handler with Size Validation ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-        setFile(e.target.files[0]);
+    const selectedFile = e.target.files?.[0];
+
+    if (selectedFile) {
+        // 1. Client-Side Size Validation
+        if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+            toast.error(`File is too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`);
+            
+            // Reset the input so the user can try again immediately
+            e.target.value = ""; 
+            setFile(null);
+            return;
+        }
+
+        // 2. Set file if valid
+        setFile(selectedFile);
     }
   };
 
@@ -200,9 +217,9 @@ export function FileUploaderField({
               {/* Replace Button */}
               {!disabled && (
                  <label 
-                    htmlFor={id} 
-                    className="cursor-pointer p-2 hover:bg-background rounded-full transition-colors text-muted-foreground hover:text-foreground shadow-sm border border-transparent hover:border-border"
-                    title="Replace file"
+                   htmlFor={id} 
+                   className="cursor-pointer p-2 hover:bg-background rounded-full transition-colors text-muted-foreground hover:text-foreground shadow-sm border border-transparent hover:border-border"
+                   title="Replace file"
                  >
                     <RefreshCw className="h-4 w-4" />
                  </label>
@@ -247,7 +264,7 @@ export function FileUploaderField({
                        Click to upload
                    </p>
                    <p className="text-xs text-muted-foreground mt-1">
-                       {accept.replace(/,/g, ", ").toUpperCase()}
+                       {accept.replace(/,/g, ", ").toUpperCase()} (MAX {MAX_FILE_SIZE_MB}MB)
                    </p>
                </div>
              </label>
