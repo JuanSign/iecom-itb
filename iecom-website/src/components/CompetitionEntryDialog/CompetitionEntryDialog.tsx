@@ -21,7 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
 type Props = {
   competition: "IECOM" | "NICE";
@@ -38,6 +38,7 @@ export function CompetitionEntryDialog({
   hasJoined,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const targetUrl = `/dashboard/find-team/${competition.toLowerCase()}`;
 
   // Action Wrappers
   const handleCreate = async (prevState: CreateTeamFormState, formData: FormData) => {
@@ -203,10 +204,14 @@ export function CompetitionEntryDialog({
         </Tabs>
 
         <DialogFooter className="pt-4 border-t sm:justify-center">
-          <Button variant="ghost" className="w-full sm:w-auto" disabled>
-            <Search className="mr-2 h-4 w-4" />
-            Need a team? (Coming Soon)
-          </Button>
+          <Link href={targetUrl} className="w-full sm:w-auto">
+            <Button 
+              className="w-full sm:w-auto bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white border-0 transition-all duration-300 hover:scale-105 shadow-md hover:shadow-xl"
+            >
+              <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
+              Find Your Squad 🚀
+            </Button>
+          </Link>
         </DialogFooter>
       </DialogContent>
     </Dialog>
