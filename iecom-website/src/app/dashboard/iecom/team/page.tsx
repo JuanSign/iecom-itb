@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { TeamMemberDialog } from "@/components/TeamMemberDialog/TeamMemberDialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Lock, Clock, Megaphone, Users } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Lock, Clock, Megaphone, Users, UserCheck, CalendarClock, MonitorPlay, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { MemberStatusBadge } from "@/components/MemberStatusBadge/MemberStatusBadge";
@@ -21,6 +21,7 @@ import { PaymentSection } from "@/components/PaymentSection/PaymentSection";
 import { DB } from "@/lib/DB";
 import { TeamDescriptionManager } from "@/components/TeamDashboard/TeamDescriptionManager";
 import { TeamRequestsList } from "@/components/TeamDashboard/TeamRequestsList";
+import { AssessmentCountdown } from "@/components/AssessmentCountdown";
 
 type TeamRequest = {
   id: string;
@@ -88,6 +89,82 @@ function LockedSection({
   );
 }
 
+function AssessmentSection({ startTimeISO }: { startTimeISO: string }) {
+  return (
+    <Card className="border-l-4 border-l-violet-500 shadow-sm">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge className="bg-violet-500 hover:bg-violet-600">STEP 3</Badge>
+              <span className="text-sm font-medium text-muted-foreground">Preliminary Round</span>
+            </div>
+            <CardTitle className="text-2xl">Multiple Choice Assessment</CardTitle>
+            <CardDescription>
+              Complete this assessment to qualify for the next stage.
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="border-violet-200 text-violet-700 bg-violet-50">
+             Upcoming
+          </Badge>
+        </div>
+      </CardHeader>
+
+      <Separator />
+
+      <CardContent className="pt-6 space-y-6">
+        
+        {/* Countdown Area */}
+        <div className="bg-muted/30 border border-border/60 rounded-xl p-6 flex flex-col items-center justify-center gap-4">
+            <h4 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Assessment Window Opens In
+            </h4>
+            <AssessmentCountdown targetDate={startTimeISO} />
+            <p className="text-xs text-muted-foreground">
+              {new Date(startTimeISO).toLocaleString('en-US', { timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short' })} (GMT+7)
+            </p>
+        </div>
+
+        {/* Rules Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Alert className="bg-blue-50/50 border-blue-100 text-blue-900">
+                <UserCheck className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-700 font-semibold mb-1">Mandatory Participation</AlertTitle>
+                <AlertDescription className="text-xs leading-relaxed text-blue-700/80">
+                    Every team member is required to complete this assessment individually.
+                </AlertDescription>
+            </Alert>
+
+            <Alert className="bg-amber-50/50 border-amber-100 text-amber-900">
+                <CalendarClock className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-700 font-semibold mb-1">48-Hour Flexible Window</AlertTitle>
+                <AlertDescription className="text-xs leading-relaxed text-amber-700/80">
+                    Your team may begin the assessment at any time within the 48-hour window starting from the opening time shown above.
+                </AlertDescription>
+            </Alert>
+
+            <Alert className="bg-pink-50/50 border-pink-100 text-pink-900">
+                <MonitorPlay className="h-4 w-4 text-pink-600" />
+                <AlertTitle className="text-pink-700 font-semibold mb-1">Synchronized Timer</AlertTitle>
+                <AlertDescription className="text-xs leading-relaxed text-pink-700/80">
+                    You have 60 minutes to complete the test. The timer starts <strong>globally for the entire team</strong> as soon as the first member begins.
+                </AlertDescription>
+            </Alert>
+
+            <Alert className="bg-slate-50/50 border-slate-200 text-slate-900">
+                <ShieldCheck className="h-4 w-4 text-slate-600" />
+                <AlertTitle className="text-slate-700 font-semibold mb-1">Proctored Environment</AlertTitle>
+                <AlertDescription className="text-xs leading-relaxed text-slate-700/80">
+                    The assessment takes place in a secure, monitored environment. Tab switching or leaving the window will be flagged as suspicious activity.
+                </AlertDescription>
+            </Alert>
+        </div>
+
+      </CardContent>
+    </Card>
+  );
+}
+
 const getTeamStatusText = (status: number) => {
   switch (status) {
     case 0: return "Waiting for Team Member Verification";
@@ -103,6 +180,9 @@ export default async function TeamPage() {
   const teamStatus: number = team.status as number;
   const teamStatusText = getTeamStatusText(teamStatus);
   const isPaymentLocked = teamStatus == 0; 
+  const isAccepted = teamStatus === 2;
+
+  const ASSESSMENT_START_DATE = "2025-12-28T10:00:00+07:00"
 
   const requestsData = await DB`
     SELECT id, name, institution, description, created_at 
@@ -230,7 +310,6 @@ export default async function TeamPage() {
           </CardFooter>
         </Card>
 
-        {/* Payment Section - Conditional Rendering */}
         {isPaymentLocked ? (
             <LockedSection 
               step="STEP 2"
@@ -243,9 +322,21 @@ export default async function TeamPage() {
             <PaymentSection 
               paymentProofUrl={team.pp_link}
               ppVerified={team.pp_verified}
-              step="STEP 3"
+              step="STEP 2"
               className="border-l-emerald-500"
             />
+        )}
+
+        {isAccepted ? (
+           <AssessmentSection startTimeISO={ASSESSMENT_START_DATE} />
+        ) : (
+           <LockedSection 
+             step="STEP 3"
+             title="Multiple Choice Assessment"
+             description="Qualifying round for all team members."
+             subtext="This section will unlock once your team is officially Accepted (Status 2)."
+             borderColorClass="border-l-violet-500"
+           />
         )}
       </div>
     </div>
