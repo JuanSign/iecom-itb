@@ -21,7 +21,7 @@ import { PaymentSection } from "@/components/PaymentSection/PaymentSection";
 import { DB } from "@/lib/DB";
 import { TeamDescriptionManager } from "@/components/TeamDashboard/TeamDescriptionManager";
 import { TeamRequestsList } from "@/components/TeamDashboard/TeamRequestsList";
-import { AssessmentCountdown } from "@/components/AssessmentCountdown";
+import { AssessmentActionArea } from "@/components/AssessmentActionArea";
 
 type TeamRequest = {
   id: string;
@@ -89,7 +89,13 @@ function LockedSection({
   );
 }
 
-function AssessmentSection({ startTimeISO }: { startTimeISO: string }) {
+function AssessmentSection({ 
+  startTimeISO, 
+  teamId, 
+}: { 
+  startTimeISO: string, 
+  teamId: string, 
+}) {
   return (
     <Card className="border-l-4 border-l-violet-500 shadow-sm">
       <CardHeader>
@@ -115,15 +121,10 @@ function AssessmentSection({ startTimeISO }: { startTimeISO: string }) {
       <CardContent className="pt-6 space-y-6">
         
         {/* Countdown Area */}
-        <div className="bg-muted/30 border border-border/60 rounded-xl p-6 flex flex-col items-center justify-center gap-4">
-            <h4 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                Assessment Window Opens In
-            </h4>
-            <AssessmentCountdown targetDate={startTimeISO} />
-            <p className="text-xs text-muted-foreground">
-              {new Date(startTimeISO).toLocaleString('en-US', { timeZone: 'Asia/Jakarta', dateStyle: 'long', timeStyle: 'short' })} (GMT+7)
-            </p>
-        </div>
+        <AssessmentActionArea 
+          startTimeISO={startTimeISO} 
+          teamId={teamId}
+        />
 
         {/* Rules Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -182,7 +183,7 @@ export default async function TeamPage() {
   const isPaymentLocked = teamStatus == 0; 
   const isAccepted = teamStatus === 2;
 
-  const ASSESSMENT_START_DATE = "2025-12-28T10:00:00+07:00"
+  const ASSESSMENT_START_DATE = "2025-12-28T08:50:00+07:00"
 
   const requestsData = await DB`
     SELECT id, name, institution, description, created_at 
@@ -328,7 +329,10 @@ export default async function TeamPage() {
         )}
 
         {isAccepted ? (
-           <AssessmentSection startTimeISO={ASSESSMENT_START_DATE} />
+          <AssessmentSection 
+           startTimeISO={ASSESSMENT_START_DATE} 
+           teamId={team.team_id}
+          />  
         ) : (
            <LockedSection 
              step="STEP 3"
