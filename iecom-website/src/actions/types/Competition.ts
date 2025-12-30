@@ -39,6 +39,10 @@ export type TeamIECOM = {
   notes: string[] | null,
   pp_link: string | null,
   pp_verified: number
+  initialDraftLink: string,
+  finalReportLink: string,
+  videoLink: string,
+  infographicLink: string,
 }
 
 export type TeamNICE = {

@@ -22,6 +22,7 @@ import { DB } from "@/lib/DB";
 import { TeamDescriptionManager } from "@/components/TeamDashboard/TeamDescriptionManager";
 import { TeamRequestsList } from "@/components/TeamDashboard/TeamRequestsList";
 import { AssessmentActionArea } from "@/components/AssessmentActionArea";
+import { CaseSimulationSection } from "@/components/CaseSimulationSection";
 
 type TeamRequest = {
   id: string;
@@ -342,6 +343,18 @@ export default async function TeamPage() {
              borderColorClass="border-l-violet-500"
            />
         )}
+
+        {isAccepted ? (
+             <CaseSimulationSection team={team} />
+         ) : (
+             <LockedSection 
+                step="STEP 4"
+                title="Case Simulation"
+                description="The main competition case study and deliverables."
+                subtext="This section unlocks after you pass the Preliminary Assessment." // Adjust text as needed
+                borderColorClass="border-l-indigo-500"
+             />
+         )}
       </div>
     </div>
   );

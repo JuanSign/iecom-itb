@@ -42,6 +42,10 @@ export const iecomTeam = pgTable("iecom_team", {
 	notes: text().array(),
 	ppLink: text("pp_link"),
 	ppVerified: integer("pp_verified").default(0).notNull(),
+	initialDraftLink: text("initial_draft_link"),
+    finalReportLink: text("final_report_link"),
+    videoLink: text("video_link"),
+    infographicLink: text("infographic_link"),
 }, (table) => [
 	unique("unique_team_name_iecom").on(table.name),
 	check("iecom_team_code_check", sql`code ~ '^[A-Z]{5}$'::text`),
