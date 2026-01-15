@@ -54,7 +54,9 @@ export type TeamNICE = {
   notes: string[] | null,
   bmc_link: string | null,
   poo_link: string | null,
-  submission_status: number
+  submission_status: number,
+  paymentProofLink: string | null,
+  proposalLink: string | null,
 }
 
 export type UpdateMemberFormState = {

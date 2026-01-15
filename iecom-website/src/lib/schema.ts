@@ -27,6 +27,8 @@ export const niceTeam = pgTable("nice_team", {
 	bmcLink: text("bmc_link"),
 	pooLink: text("poo_link"),
 	submissionStatus: integer("submission_status").default(0).notNull(),
+	paymentProofLink: text("payment_proof_link"), 
+  	proposalLink: text("proposal_link"),
 }, (table) => [
 	unique("unique_team_name_nice").on(table.name),
 	check("nice_team_code_check", sql`code ~ '^[A-Z]{5}$'::text`),

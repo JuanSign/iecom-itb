@@ -351,7 +351,7 @@ export default async function TeamPage() {
                 step="STEP 4"
                 title="Case Simulation"
                 description="The main competition case study and deliverables."
-                subtext="This section unlocks after you pass the Preliminary Assessment." // Adjust text as needed
+                subtext="This section unlocks after you pass the Preliminary Assessment."
                 borderColorClass="border-l-indigo-500"
              />
          )}

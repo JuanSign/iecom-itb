@@ -1,5 +1,3 @@
-"use client";
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -7,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Briefcase } from "lucide-react";
 import { DeliverableItem } from "./DeliverableItem";
 import { TeamIECOM } from "@/actions/types/Competition";
+import { getSignedUrlForR2 } from "@/lib/R2"; 
 
 const DEADLINES = {
     DRAFT: "2026-01-03T08:00:00+07:00",
@@ -15,7 +14,14 @@ const DEADLINES = {
     INFOGRAPHIC: "2026-01-16T08:00:00+07:00",
 };
 
-export function CaseSimulationSection({ team }: { team: TeamIECOM }) {
+export async function CaseSimulationSection({ team }: { team: TeamIECOM }) {
+    
+    const [draftUrl, finalUrl, infographicUrl] = await Promise.all([
+        getSignedUrlForR2(team.initialDraftLink),
+        getSignedUrlForR2(team.finalReportLink),
+        getSignedUrlForR2(team.infographicLink),
+    ]);
+
     return (
         <Card className="border-l-4 border-l-indigo-500 shadow-sm mt-6">
             <CardHeader>
@@ -63,7 +69,8 @@ export function CaseSimulationSection({ team }: { team: TeamIECOM }) {
                         deadlineISO={DEADLINES.DRAFT}
                         type="initial_draft"
                         accept=".pdf"
-                        currentValue={team.initialDraftLink}
+                        currentValue={team.initialDraftLink} 
+                        viewUrl={draftUrl} 
                     />
                     <DeliverableItem 
                         teamId={team.team_id}
@@ -73,6 +80,7 @@ export function CaseSimulationSection({ team }: { team: TeamIECOM }) {
                         type="final_report"
                         accept=".pdf"
                         currentValue={team.finalReportLink}
+                        viewUrl={finalUrl}
                     />
                     <DeliverableItem 
                         teamId={team.team_id}
@@ -81,6 +89,7 @@ export function CaseSimulationSection({ team }: { team: TeamIECOM }) {
                         deadlineISO={DEADLINES.VIDEO}
                         type="video_link"
                         currentValue={team.videoLink}
+                        viewUrl={team.videoLink} 
                     />
                     <DeliverableItem 
                         teamId={team.team_id}
@@ -90,6 +99,7 @@ export function CaseSimulationSection({ team }: { team: TeamIECOM }) {
                         type="infographic"
                         accept=".pdf, .png, .jpg, .jpeg"
                         currentValue={team.infographicLink}
+                        viewUrl={infographicUrl}
                     />
                 </div>
             </CardContent>

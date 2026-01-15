@@ -51,3 +51,23 @@ export async function getSignedUrlForR2(key: string | null) {
   });
   return await getSignedUrl(R2, command, { expiresIn: 300 });
 }
+
+export const getPresignedUploadUrl = async (
+  folder: string,
+  fileName: string,
+  fileType: string,
+  teamId: string
+) => {
+  const extension = fileName.split(".").pop();
+  const uniqueKey = `${folder}/${teamId}-${Date.now()}.${extension}`;
+  
+  const command = new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME!,
+    Key: uniqueKey,
+    ContentType: fileType,
+  });
+  
+  const signedUrl = await getSignedUrl(R2, command, { expiresIn: 300 });
+  
+  return { signedUrl, key: uniqueKey };
+};

@@ -21,6 +21,8 @@ import { DocumentsSection } from "@/components/DocumentSection/DocumentSection";
 import { DB } from "@/lib/DB";
 import { TeamDescriptionManager } from "@/components/TeamDashboard/TeamDescriptionManager";
 import { TeamRequestsList } from "@/components/TeamDashboard/TeamRequestsList";
+import { StageTwoSection } from "@/components/StageTwo";
+import { getSignedUrlForR2 } from "@/lib/R2";
 
 type TeamRequest = {
   id: string;
@@ -110,6 +112,11 @@ export default async function TeamPage() {
     WHERE team_id = ${team.team_id}
     ORDER BY created_at DESC
   `;
+
+  const [paymentProofUrl, proposalUrl] = await Promise.all([
+    getSignedUrlForR2(team.paymentProofLink),
+    getSignedUrlForR2(team.proposalLink),
+  ]);
 
   const requests = requestsData.map(req => ({
     ...req,
@@ -250,6 +257,15 @@ export default async function TeamPage() {
               className="border-l-emerald-500"
             />
         )}
+
+        <StageTwoSection 
+          teamId={team.team_id}
+          paymentProofLink={team.paymentProofLink}
+          proposalLink={team.proposalLink}
+          viewPaymentUrl={paymentProofUrl}
+          viewProposalUrl={proposalUrl}
+        />
+
       </div>
     </div>
   );

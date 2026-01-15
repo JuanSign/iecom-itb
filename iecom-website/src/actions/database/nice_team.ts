@@ -54,16 +54,17 @@ export async function deleteMember(accountId: string) {
 
 export async function fetchTeamPageData(accountId: string) {
     const teamMembership = await DB`SELECT team_id FROM nice_member WHERE account_id = ${accountId}`;
-    if (teamMembership.length === 0) {
-        throw new Error("User not assigned to a team.");
-    }
+    if (teamMembership.length === 0) throw new Error("User not assigned to a team.");
 
     const teamId = teamMembership[0].team_id;
 
     const teamResult = await (DB`
         SELECT 
             team_id, name, code, status, messages, 
-            notes, bmc_link, poo_link, submission_status
+            notes, bmc_link, poo_link, submission_status,
+            -- NEW COLUMNS WITH ALIASES
+            payment_proof_link as "paymentProofLink",
+            proposal_link as "proposalLink"
         FROM nice_team 
         WHERE team_id = ${teamId}
     `) as TeamNICE[];

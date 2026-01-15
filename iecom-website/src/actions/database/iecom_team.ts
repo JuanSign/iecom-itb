@@ -63,8 +63,18 @@ export async function fetchTeamPageData(accountId: string) {
 
     const teamResult = await (DB`
         SELECT 
-            team_id, name, code, status, messages, 
-            notes, pp_link, pp_verified
+            team_id, 
+            name, 
+            code, 
+            status, 
+            messages, 
+            notes, 
+            pp_link, 
+            pp_verified, 
+            initial_draft_link as "initialDraftLink", 
+            final_report_link as "finalReportLink", 
+            video_link as "videoLink", 
+            infographic_link as "infographicLink"
         FROM iecom_team 
         WHERE team_id = ${teamId}
     `) as TeamIECOM[];

@@ -2,46 +2,51 @@
 
 import { db } from "@/lib/DB"; 
 import { iecomTeam } from "@/lib/schema";
-import { uploadFileToR2 } from "@/lib/R2"; 
+import { getPresignedUploadUrl } from "@/lib/R2"; 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024;
+type DeliverableType = 'initial_draft' | 'final_report' | 'infographic';
 
-type DeliverableColumn = 'initialDraftLink' | 'finalReportLink' | 'infographicLink';
+const CONFIG: Record<DeliverableType, { column: 'initialDraftLink' | 'finalReportLink' | 'infographicLink'; folder: string }> = {
+    'initial_draft': { column: 'initialDraftLink', folder: 'iecom/drafts' },
+    'final_report': { column: 'finalReportLink', folder: 'iecom/reports' },
+    'infographic': { column: 'infographicLink', folder: 'iecom/infographics' },
+};
 
-export async function uploadDeliverable(
+export async function getDeliverableUploadUrl(
     teamId: string, 
-    deliverableType: 'initial_draft' | 'final_report' | 'infographic', 
-    formData: FormData
+    deliverableType: DeliverableType, 
+    fileName: string,
+    fileType: string
 ) {
-    const file = formData.get("file") as File;
+    const settings = CONFIG[deliverableType];
+    if (!settings) throw new Error("Invalid deliverable type");
 
-    if (!file || file.size === 0) {
-        throw new Error("No file selected.");
-    }
+    const { signedUrl, key } = await getPresignedUploadUrl(
+        settings.folder, 
+        fileName, 
+        fileType, 
+        teamId
+    );
 
-    if (file.size > MAX_FILE_SIZE) {
-        throw new Error("File size exceeds the 2MB limit.");
-    }
+    return { signedUrl, key };
+}
 
-    const config: Record<typeof deliverableType, { column: DeliverableColumn; folder: string }> = {
-        'initial_draft': { column: 'initialDraftLink', folder: 'iecom/drafts' },
-        'final_report': { column: 'finalReportLink', folder: 'iecom/reports' },
-        'infographic': { column: 'infographicLink', folder: 'iecom/infographics' },
-    };
-
-    const settings = config[deliverableType];
+export async function saveDeliverableKey(
+    teamId: string, 
+    deliverableType: DeliverableType, 
+    key: string
+) {
+    const settings = CONFIG[deliverableType];
     
-    const uploadedKey = await uploadFileToR2(file, settings.folder, teamId);
-    if (!uploadedKey) throw new Error("Upload failed");
-
     await db.update(iecomTeam)
         .set({
-            [settings.column]: uploadedKey
+            [settings.column]: key
         })
         .where(eq(iecomTeam.teamId, teamId));
 
+    revalidatePath("/dashboard/iecom/team"); 
     revalidatePath("/dashboard/iecom"); 
     return { success: true };
 }
@@ -58,6 +63,7 @@ export async function submitVideoLink(teamId: string, link: string) {
         .set({ videoLink: link })
         .where(eq(iecomTeam.teamId, teamId));
 
-    revalidatePath("/dashboard/iecom");
+    revalidatePath("/dashboard/iecom/team"); 
+    revalidatePath("/dashboard/iecom"); 
     return { success: true };
 }

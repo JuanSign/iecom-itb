@@ -2,14 +2,16 @@
 
 import { CreateTeamFormState, createTeamSchema, JoinTeamFormState, joinTeamSchema, UpdateMemberFormState, UploadDocsFormState } from "@/actions/types/Competition";
 import { refreshSession, verifySession } from "../session";
-import { DB } from "@/lib/DB";
+import { db, DB } from "@/lib/DB";
 import { addMemberToTeam, checkTeamNameExists, deleteMember, fetchTeamPageData, getTeamId, insertNewTeam, updateTeamDocsInDb } from "@/actions/database/nice_team";
 import { addEventToAccount, removeEventFromAccount } from "@/actions/database/account";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getSignedUrlForR2, uploadFileToR2 } from "@/lib/R2";
+import { getPresignedUploadUrl, getSignedUrlForR2, uploadFileToR2 } from "@/lib/R2";
 import { updateMember } from "@/actions/database/nice_member";
 import { NeonDbError } from "@neondatabase/serverless";
+import { niceTeam } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 
 function generateTeamCode(): string {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -247,4 +249,33 @@ export async function uploadNiceTeamDocuments(
         console.error("Upload Error:", error);
         return { error: "An error occurred while uploading documents. Please try again." };
     }
+}
+
+type NiceStageTwoType = 'payment_proof' | 'proposal';
+
+export async function getNiceStageTwoUploadUrl(
+    teamId: string, 
+    type: NiceStageTwoType, 
+    fileName: string,
+    fileType: string
+) {
+    const settings = CONFIG[type];
+    const { signedUrl, key } = await getPresignedUploadUrl(settings.folder, fileName, fileType, teamId);
+    return { signedUrl, key };
+}
+
+const CONFIG: Record<string, { column: 'paymentProofLink' | 'proposalLink'; folder: string }> = {
+    'payment_proof': { column: 'paymentProofLink', folder: 'nice/payments' },
+    'proposal': { column: 'proposalLink', folder: 'nice/proposals' },
+};
+
+export async function saveNiceStageTwoKey(teamId: string, type: string, key: string) {
+    const settings = CONFIG[type];
+    
+    await db.update(niceTeam)
+        .set({ [settings.column]: key })
+        .where(eq(niceTeam.teamId, teamId));
+
+    revalidatePath("/dashboard/nice/team"); 
+    return { success: true };
 }
