@@ -7,13 +7,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronRight, Search, FileText, Download, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, FileText, Download, Loader2, ExternalLink, Paperclip } from "lucide-react";
 import { EditTeamDialog } from "./EditTeamDialog";
 import { MemberManager } from "./MemberManager";
 import { toast } from "sonner";
 import { getSignedDocUrl } from "@/actions/server/admin";
 
-// --- TYPES ---
 export type AdminMember = {
   id: string; 
   name: string; 
@@ -32,14 +31,32 @@ export type AdminMember = {
 
 export type AdminTeam = {
   team_id: number; team_name: string; code: string;
-  pp_verified?: number; pp_link?: string | null;
-  submission_status?: number; bmc_link?: string | null; poo_link?: string | null;
+  
+  pp_verified?: number; 
+  pp_link?: string | null;
+  initial_draft_link?: string | null;
+  final_report_link?: string | null;
+  video_link?: string | null;
+  infographic_link?: string | null;
+
+  submission_status?: number; 
+  bmc_link?: string | null; 
+  poo_link?: string | null;
+  
   members: AdminMember[]; notes: string[] | null; status: number;
 };
 
-// --- HELPER ---
+// --- HELPERS ---
+
+const hasSubmission = (team: AdminTeam, comp: "NICE" | "IECOM") => {
+    if (comp === "IECOM") {
+        return !!(team.initial_draft_link || team.final_report_link || team.video_link || team.infographic_link);
+    }
+    // For NICE
+    return !!(team.bmc_link || team.poo_link);
+};
+
 const getPipelineBadge = (status: number, comp: 'NICE' | 'IECOM') => {
-    // 0: Waiting Member, 1: Waiting Pay/Sub, 2: Accepted
     if (status === 0) return <Badge variant="outline" className="bg-zinc-800 text-zinc-400 border-zinc-700">Waiting Members</Badge>;
     if (status === 2) return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Accepted</Badge>;
     
@@ -56,7 +73,47 @@ const getPaymentBadge = (status: number) => {
     return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Check</Badge>;
 };
 
-// --- COMPONENT ---
+const DocButton = ({ 
+  label, 
+  link, 
+  loadingKey, 
+  onClick,
+  isExternal = false
+}: { 
+  label: string; 
+  link?: string | null; 
+  loadingKey?: string | null; 
+  onClick?: (k: string) => void;
+  isExternal?: boolean;
+}) => {
+  if (!link) return null;
+
+  const handleClick = () => {
+      if (isExternal) {
+          window.open(link, "_blank");
+      } else if (onClick) {
+          onClick(link);
+      }
+  };
+
+  return (
+    <button 
+      onClick={handleClick} 
+      className="flex items-center justify-between p-2 bg-zinc-900 rounded border border-zinc-800 hover:border-blue-500/50 group transition-all w-full text-left"
+    >
+      <span className="text-xs text-zinc-300 flex items-center gap-2">
+         {isExternal ? <ExternalLink className="h-3 w-3 text-zinc-500"/> : <Paperclip className="h-3 w-3 text-zinc-500"/>}
+         {label}
+      </span>
+      
+      {loadingKey === link ? (
+        <Loader2 className="h-3 w-3 animate-spin text-zinc-500"/> 
+      ) : (
+        <Download className="h-3 w-3 text-zinc-500 group-hover:text-blue-400" />
+      )}
+    </button>
+  );
+};
 
 export function AdminDataTable({ data, competition, role }: { data: AdminTeam[]; competition: "NICE" | "IECOM"; role: string }) {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -78,10 +135,25 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
     else toast.error("Could not open document");
   }
 
+  // 1. Filter
   const filteredData = data.filter(team => 
     team.team_name.toLowerCase().includes(search.toLowerCase()) ||
     team.code.toLowerCase().includes(search.toLowerCase())
   );
+
+  // 2. Sort (Submissions on top)
+  const sortedData = [...filteredData].sort((a, b) => {
+      const aHasSub = hasSubmission(a, competition);
+      const bHasSub = hasSubmission(b, competition);
+      
+      // If a has sub and b doesn't, a comes first (-1)
+      if (aHasSub && !bHasSub) return -1;
+      // If b has sub and a doesn't, b comes first (1)
+      if (!aHasSub && bHasSub) return 1;
+      
+      // Otherwise keep alphabetical
+      return 0;
+  });
 
   return (
     <div className="space-y-4">
@@ -109,10 +181,13 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredData.length === 0 ? (
+            {sortedData.length === 0 ? (
                <TableRow><TableCell colSpan={6} className="h-24 text-center text-zinc-500">No results found.</TableCell></TableRow>
             ) : (
-              filteredData.map((team) => (
+              sortedData.map((team) => {
+                const isSubmitted = hasSubmission(team, competition);
+                
+                return (
                 <Fragment key={team.team_id}>
                   <TableRow className={`border-zinc-800 transition-colors ${expandedRows.has(team.team_id) ? 'bg-zinc-900/50' : 'hover:bg-zinc-900/30'}`}>
                     <TableCell>
@@ -120,10 +195,17 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
                         {expandedRows.has(team.team_id) ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
                       </Button>
                     </TableCell>
-                    <TableCell className="font-medium text-zinc-200">{team.team_name}</TableCell>
+                    
+                    {/* HIGHLIGHTED TEAM NAME */}
+                    <TableCell>
+                        <div className={`font-medium flex items-center gap-2 ${isSubmitted ? 'text-emerald-400' : 'text-zinc-200'}`}>
+                            {team.team_name}
+                            {isSubmitted && <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                        </div>
+                    </TableCell>
+
                     <TableCell className="font-mono text-zinc-500 text-xs">{team.code}</TableCell>
                     
-                    {/* Column 4: Specific Metric (Payment for IECOM, Stage for NICE) */}
                     <TableCell>
                       {competition === 'IECOM' ? (
                           getPaymentBadge(team.pp_verified ?? 0)
@@ -134,7 +216,6 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
                       )}
                     </TableCell>
 
-                    {/* Column 5: Pipeline Status */}
                     <TableCell>
                        {getPipelineBadge(team.status, competition)}
                     </TableCell>
@@ -149,29 +230,35 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
                       <TableCell colSpan={6} className="p-0">
                         <div className="p-6 border-l-2 border-emerald-600 bg-zinc-950/50 shadow-inner">
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                {/* LEFT: Info & Docs */}
                                 <div className="lg:col-span-4 space-y-6">
                                     <div className="space-y-3">
                                         <h4 className="text-xs font-bold uppercase text-zinc-500 flex items-center gap-2"><FileText className="h-3 w-3" /> Team Documents</h4>
                                         <div className="grid gap-2">
-                                            {team.pp_link ? (
-                                                <button onClick={() => openTeamDoc(team.pp_link)} className="flex items-center justify-between p-2 bg-zinc-900 rounded border border-zinc-800 hover:border-blue-500/50 group transition-all w-full text-left">
-                                                    <span className="text-xs text-zinc-300">Payment Proof</span>
-                                                    {loadingDoc === team.pp_link ? <Loader2 className="h-3 w-3 animate-spin text-zinc-500"/> : <Download className="h-3 w-3 text-zinc-500 group-hover:text-blue-400" />}
-                                                </button>
-                                            ) : competition === 'IECOM' && <div className="text-xs text-zinc-600 italic p-2">No Payment Proof</div>}
-                                            
-                                            {team.bmc_link && (
-                                                 <button onClick={() => openTeamDoc(team.bmc_link)} className="flex items-center justify-between p-2 bg-zinc-900 rounded border border-zinc-800 hover:border-blue-500/50 group transition-all w-full text-left">
-                                                    <span className="text-xs text-zinc-300">BMC</span>
-                                                    {loadingDoc === team.bmc_link ? <Loader2 className="h-3 w-3 animate-spin text-zinc-500"/> : <Download className="h-3 w-3 text-zinc-500 group-hover:text-blue-400" />}
-                                                </button>
+                                            {competition === 'IECOM' && (
+                                                <>
+                                                    {team.pp_link ? (
+                                                        <DocButton label="Payment Proof" link={team.pp_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
+                                                    ) : (
+                                                        <div className="text-xs text-zinc-600 italic p-2 border border-dashed border-zinc-800 rounded">No Payment Proof</div>
+                                                    )}
+
+                                                    {isSubmitted && <div className="my-2 border-t border-zinc-800"></div>}
+
+                                                    <DocButton label="Initial Draft" link={team.initial_draft_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
+                                                    <DocButton label="Final Report" link={team.final_report_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
+                                                    
+                                                    {/* EXTERNAL LINK FOR VIDEO */}
+                                                    <DocButton label="Video" link={team.video_link} isExternal={true} />
+                                                    
+                                                    <DocButton label="Infographic" link={team.infographic_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
+                                                </>
                                             )}
-                                            {team.poo_link && (
-                                                 <button onClick={() => openTeamDoc(team.poo_link)} className="flex items-center justify-between p-2 bg-zinc-900 rounded border border-zinc-800 hover:border-blue-500/50 group transition-all w-full text-left">
-                                                    <span className="text-xs text-zinc-300">POO</span>
-                                                    {loadingDoc === team.poo_link ? <Loader2 className="h-3 w-3 animate-spin text-zinc-500"/> : <Download className="h-3 w-3 text-zinc-500 group-hover:text-blue-400" />}
-                                                </button>
+
+                                            {competition === 'NICE' && (
+                                                <>
+                                                    <DocButton label="BMC" link={team.bmc_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
+                                                    <DocButton label="POO" link={team.poo_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -186,7 +273,6 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
                                         ) : <div className="p-4 border border-dashed border-zinc-800 rounded text-center"><p className="text-xs text-zinc-600">No notes.</p></div>}
                                     </div>
                                 </div>
-                                {/* RIGHT: Members */}
                                 <div className="lg:col-span-8">
                                     <h4 className="text-xs font-bold uppercase text-zinc-500 mb-4">Team Members ({team.members.length})</h4>
                                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -199,7 +285,7 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
                     </TableRow>
                   )}
                 </Fragment>
-              ))
+              )})
             )}
           </TableBody>
         </Table>

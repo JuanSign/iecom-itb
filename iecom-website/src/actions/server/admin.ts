@@ -7,8 +7,6 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-// --- TYPES ---
-
 export type AdminFormState = {
   error?: string;
   message?: string;
@@ -20,6 +18,8 @@ export interface DashboardMember {
   role: string;
   email: string;
   phone_num: string;
+  institution: string | null;
+  id_no: string | null;
   sc_verified: number;
   sc_link: string | null;
   fp_verified: number;
@@ -40,17 +40,17 @@ export interface DashboardTeam {
   status: number;
   members: DashboardMember[];
   
-  // IECOM Specific
   pp_verified?: number;
   pp_link?: string | null;
+  initial_draft_link?: string | null;
+  final_report_link?: string | null;
+  video_link?: string | null;
+  infographic_link?: string | null;
   
-  // NICE Specific
   submission_status?: number;
   bmc_link?: string | null;
   poo_link?: string | null;
 }
-
-// --- AUTHENTICATION ---
 
 export async function adminLogin(prevState: AdminFormState, formData: FormData): Promise<AdminFormState> {
   const username = formData.get("username") as string;
@@ -78,13 +78,10 @@ export async function adminLogout() {
   redirect("/admin");
 }
 
-// --- DATA FETCHING ---
-
 export async function getAdminDashboardData() {
   const session = await verifyAdminSession();
   if (!session) throw new Error("Unauthorized");
 
-  // Fetch NICE Teams
   const niceRaw = await DB`
     SELECT 
       t.team_id, t.name as team_name, t.code, t.submission_status, t.bmc_link, t.poo_link, t.notes, t.status,
@@ -96,8 +93,8 @@ export async function getAdminDashboardData() {
             'role', m.role, 
             'email', m.email, 
             'phone_num', m.phone_num,
-            'institution', m.institution,  -- ADDED THIS
-            'id_no', m.id_no,              -- ADDED THIS
+            'institution', m.institution,
+            'id_no', m.id_no,
             'sc_verified', m.sc_verified, 'sc_link', m.sc_link,
             'fp_verified', m.fp_verified, 'fp_link', m.fp_link,
             'sd_verified', m.sd_verified, 'sd_link', m.sd_link,
@@ -111,10 +108,11 @@ export async function getAdminDashboardData() {
     GROUP BY t.team_id ORDER BY t.name ASC
   `;
 
-  // Fetch IECOM Teams
   const iecomRaw = await DB`
     SELECT 
-      t.team_id, t.name as team_name, t.code, t.pp_verified, t.pp_link, t.notes, t.status,
+      t.team_id, t.name as team_name, t.code, t.pp_verified, t.pp_link, 
+      t.initial_draft_link, t.final_report_link, t.video_link, t.infographic_link,
+      t.notes, t.status,
       COALESCE(
         json_agg(
           json_build_object(
@@ -123,8 +121,8 @@ export async function getAdminDashboardData() {
             'role', m.role, 
             'email', m.email, 
             'phone_num', m.phone_num,
-            'institution', m.institution,  -- ADDED THIS
-            'id_no', m.id_no,              -- ADDED THIS
+            'institution', m.institution,
+            'id_no', m.id_no,
             'sc_verified', m.sc_verified, 'sc_link', m.sc_link,
             'fp_verified', m.fp_verified, 'fp_link', m.fp_link,
             'sd_verified', m.sd_verified, 'sd_link', m.sd_link,
@@ -146,8 +144,6 @@ export async function getAdminDashboardData() {
   };
 }
 
-// --- ON-DEMAND URL SIGNING ---
-
 export async function getSignedDocUrl(key: string) {
     const session = await verifyAdminSession();
     if (!session || session.role !== "ADMIN") return { error: "Unauthorized" };
@@ -159,8 +155,6 @@ export async function getSignedDocUrl(key: string) {
 
     return { success: true, url };
 }
-
-// --- TEAM MUTATIONS ---
 
 export async function updateTeamStatus(
   competition: "NICE" | "IECOM",
@@ -217,8 +211,6 @@ export async function updateTeamStatus(
   }
 }
 
-// --- MEMBER MUTATIONS ---
-
 export async function updateMemberStatus(
   competition: "NICE" | "IECOM",
   teamId: string,
@@ -231,11 +223,7 @@ export async function updateMemberStatus(
   if (!session || session.role !== "ADMIN") return { error: "Unauthorized" };
 
   try {
-    // We cannot use dynamic table names like `DB('nice_member')` with the neon driver.
-    // We must explicity branch our logic.
-
     if (competition === "IECOM") {
-        // --- IECOM TABLE LOGIC ---
         if (field === "notes" && action === "remove_note") {
              await DB`UPDATE iecom_member SET notes = array_remove(notes, ${String(value)}) WHERE team_id = ${teamId} AND account_id = ${accountId}`;
         }
@@ -262,7 +250,6 @@ export async function updateMemberStatus(
         }
     }
     else if (competition === "NICE") {
-        // --- NICE TABLE LOGIC ---
         if (field === "notes" && action === "remove_note") {
              await DB`UPDATE nice_member SET notes = array_remove(notes, ${String(value)}) WHERE team_id = ${teamId} AND account_id = ${accountId}`;
         }
