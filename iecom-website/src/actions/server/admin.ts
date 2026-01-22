@@ -39,17 +39,19 @@ export interface DashboardTeam {
   notes: string[] | null;
   status: number;
   members: DashboardMember[];
-  
   pp_verified?: number;
   pp_link?: string | null;
   initial_draft_link?: string | null;
   final_report_link?: string | null;
   video_link?: string | null;
   infographic_link?: string | null;
-  
   submission_status?: number;
   bmc_link?: string | null;
   poo_link?: string | null;
+  payment_verified?: number;
+  payment_proof_link?: string | null;
+  proposal_verified?: number;
+  proposal_link?: string | null;
 }
 
 export async function adminLogin(prevState: AdminFormState, formData: FormData): Promise<AdminFormState> {
@@ -84,7 +86,9 @@ export async function getAdminDashboardData() {
 
   const niceRaw = await DB`
     SELECT 
-      t.team_id, t.name as team_name, t.code, t.submission_status, t.bmc_link, t.poo_link, t.notes, t.status,
+      t.team_id, t.name as team_name, t.code, t.submission_status, 
+      t.bmc_link, t.poo_link, t.notes, t.status,
+      t.payment_proof_link, t.proposal_link, t.payment_verified, t.proposal_verified,
       COALESCE(
         json_agg(
           json_build_object(

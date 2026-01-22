@@ -42,18 +42,20 @@ export type AdminTeam = {
   submission_status?: number; 
   bmc_link?: string | null; 
   poo_link?: string | null;
+
+  payment_verified?: number;
+  payment_proof_link?: string | null;
+  proposal_verified?: number;
+  proposal_link?: string | null;
   
   members: AdminMember[]; notes: string[] | null; status: number;
 };
-
-// --- HELPERS ---
 
 const hasSubmission = (team: AdminTeam, comp: "NICE" | "IECOM") => {
     if (comp === "IECOM") {
         return !!(team.initial_draft_link || team.final_report_link || team.video_link || team.infographic_link);
     }
-    // For NICE
-    return !!(team.bmc_link || team.poo_link);
+    return !!(team.bmc_link || team.poo_link || team.payment_proof_link || team.proposal_link);
 };
 
 const getPipelineBadge = (status: number, comp: 'NICE' | 'IECOM') => {
@@ -135,23 +137,18 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
     else toast.error("Could not open document");
   }
 
-  // 1. Filter
   const filteredData = data.filter(team => 
     team.team_name.toLowerCase().includes(search.toLowerCase()) ||
     team.code.toLowerCase().includes(search.toLowerCase())
   );
 
-  // 2. Sort (Submissions on top)
   const sortedData = [...filteredData].sort((a, b) => {
       const aHasSub = hasSubmission(a, competition);
       const bHasSub = hasSubmission(b, competition);
       
-      // If a has sub and b doesn't, a comes first (-1)
       if (aHasSub && !bHasSub) return -1;
-      // If b has sub and a doesn't, b comes first (1)
       if (!aHasSub && bHasSub) return 1;
       
-      // Otherwise keep alphabetical
       return 0;
   });
 
@@ -196,7 +193,6 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
                       </Button>
                     </TableCell>
                     
-                    {/* HIGHLIGHTED TEAM NAME */}
                     <TableCell>
                         <div className={`font-medium flex items-center gap-2 ${isSubmitted ? 'text-emerald-400' : 'text-zinc-200'}`}>
                             {team.team_name}
@@ -217,7 +213,7 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
                     </TableCell>
 
                     <TableCell>
-                       {getPipelineBadge(team.status, competition)}
+                        {getPipelineBadge(team.status, competition)}
                     </TableCell>
 
                     <TableCell className="text-right">
@@ -246,16 +242,23 @@ export function AdminDataTable({ data, competition, role }: { data: AdminTeam[];
 
                                                     <DocButton label="Initial Draft" link={team.initial_draft_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
                                                     <DocButton label="Final Report" link={team.final_report_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
-                                                    
-                                                    {/* EXTERNAL LINK FOR VIDEO */}
                                                     <DocButton label="Video" link={team.video_link} isExternal={true} />
-                                                    
                                                     <DocButton label="Infographic" link={team.infographic_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
                                                 </>
                                             )}
 
                                             {competition === 'NICE' && (
                                                 <>
+                                                    {team.payment_proof_link ? (
+                                                        <DocButton label="Payment Proof" link={team.payment_proof_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
+                                                    ) : (
+                                                        <div className="text-xs text-zinc-600 italic p-2 border border-dashed border-zinc-800 rounded">No Payment Proof</div>
+                                                    )}
+                                                    
+                                                    <DocButton label="Proposal" link={team.proposal_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
+                                                    
+                                                    <div className="my-2 border-t border-zinc-800"></div>
+                                                    
                                                     <DocButton label="BMC" link={team.bmc_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
                                                     <DocButton label="POO" link={team.poo_link} loadingKey={loadingDoc} onClick={openTeamDoc} />
                                                 </>

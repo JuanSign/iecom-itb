@@ -49,7 +49,6 @@ export function EditTeamDialog({ team, competition }: { team: AdminTeam; competi
                 
                 <div className="grid gap-6 py-4">
                     
-                    {/* 1. General Status (For both comps) */}
                     <div className="space-y-3">
                         <h4 className="text-sm font-semibold text-zinc-300">Team Status (Pipeline)</h4>
                         <form action={handleUpdate} className="flex gap-2 items-end">
@@ -70,7 +69,6 @@ export function EditTeamDialog({ team, competition }: { team: AdminTeam; competi
                         </form>
                     </div>
 
-                    {/* 2. IECOM Specific: Payment Status */}
                     {competition === "IECOM" && (
                         <div className="space-y-3 pt-4 border-t border-zinc-800">
                             <h4 className="text-sm font-semibold text-zinc-300">Payment Verification</h4>
@@ -93,37 +91,76 @@ export function EditTeamDialog({ team, competition }: { team: AdminTeam; competi
                         </div>
                     )}
 
-                    {/* 3. NICE Specific: Submission Stage */}
                     {competition === "NICE" && (
-                        <div className="space-y-3 pt-4 border-t border-zinc-800">
-                            <h4 className="text-sm font-semibold text-zinc-300">Submission Stage</h4>
-                            <form action={handleUpdate} className="flex gap-2 items-end">
-                                <input type="hidden" name="field" value="submission_status" />
-                                <div className="w-full">
-                                    <Select name="value" defaultValue={String(team.submission_status)}>
-                                        <SelectTrigger className="bg-zinc-950 border-zinc-700">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                                            <SelectItem value="0">Stage 0 (Registered)</SelectItem>
-                                            <SelectItem value="1">Stage 1</SelectItem>
-                                            <SelectItem value="2">Stage 2</SelectItem>
-                                            <SelectItem value="3">Stage 3</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700" disabled={isLoading}>Save</Button>
-                            </form>
-                        </div>
+                        <>
+                            <div className="space-y-3 pt-4 border-t border-zinc-800">
+                                <h4 className="text-sm font-semibold text-zinc-300">Payment Verification</h4>
+                                <form action={handleUpdate} className="flex gap-2 items-end">
+                                    <input type="hidden" name="field" value="payment_verified" />
+                                    <div className="w-full">
+                                        <Select name="value" defaultValue={String(team.payment_verified ?? 0)}>
+                                            <SelectTrigger className="bg-zinc-950 border-zinc-700">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                                                <SelectItem value="0">0 - Pending Check</SelectItem>
+                                                <SelectItem value="1">1 - Rejected</SelectItem>
+                                                <SelectItem value="2">2 - Verified</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Button type="submit" size="sm" className="bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>Save</Button>
+                                </form>
+                            </div>
+
+                            <div className="space-y-3 pt-4 border-t border-zinc-800">
+                                <h4 className="text-sm font-semibold text-zinc-300">Proposal Verification</h4>
+                                <form action={handleUpdate} className="flex gap-2 items-end">
+                                    <input type="hidden" name="field" value="proposal_verified" />
+                                    <div className="w-full">
+                                        <Select name="value" defaultValue={String(team.proposal_verified ?? 0)}>
+                                            <SelectTrigger className="bg-zinc-950 border-zinc-700">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                                                <SelectItem value="0">0 - Pending Check</SelectItem>
+                                                <SelectItem value="1">1 - Rejected</SelectItem>
+                                                <SelectItem value="2">2 - Verified</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Button type="submit" size="sm" className="bg-purple-600 hover:bg-purple-700" disabled={isLoading}>Save</Button>
+                                </form>
+                            </div>
+
+                            <div className="space-y-3 pt-4 border-t border-zinc-800">
+                                <h4 className="text-sm font-semibold text-zinc-300">Submission Stage</h4>
+                                <form action={handleUpdate} className="flex gap-2 items-end">
+                                    <input type="hidden" name="field" value="submission_status" />
+                                    <div className="w-full">
+                                        <Select name="value" defaultValue={String(team.submission_status)}>
+                                            <SelectTrigger className="bg-zinc-950 border-zinc-700">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                                                <SelectItem value="0">Stage 0 (Registered)</SelectItem>
+                                                <SelectItem value="1">Stage 1</SelectItem>
+                                                <SelectItem value="2">Stage 2</SelectItem>
+                                                <SelectItem value="3">Stage 3</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700" disabled={isLoading}>Save</Button>
+                                </form>
+                            </div>
+                        </>
                     )}
 
-                    {/* 4. Notes Manager */}
                     <div className="space-y-3 pt-4 border-t border-zinc-800">
                         <h4 className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
                             <Send className="h-3 w-3" /> Team Notes
                         </h4>
                         
-                        {/* List Existing Notes */}
                         {team.notes && team.notes.length > 0 && (
                             <div className="space-y-2 mb-3 max-h-40 overflow-y-auto border border-zinc-800 rounded p-2 bg-zinc-950/50">
                                 {team.notes.map((n, i) => (
@@ -137,7 +174,6 @@ export function EditTeamDialog({ team, competition }: { team: AdminTeam; competi
                             </div>
                         )}
 
-                        {/* Add New Note */}
                         <form action={handleUpdate} className="flex gap-2">
                             <input type="hidden" name="field" value="general_note" />
                             <Input name="value" required placeholder="Add a new note..." className="bg-zinc-950 border-zinc-700 text-sm" />
