@@ -28,35 +28,35 @@ export async function startTeamAssessment(teamId: string) {
     redirect("/dashboard/iecom/assesment"); 
   }
 
-  await db.transaction(async (tx) => {
-    const doubleCheck = await tx.query.iecomTeamSelectionProgress.findFirst({
-      where: eq(iecomTeamSelectionProgress.teamId, teamId),
-    });
-    if (doubleCheck) return;
+  // await db.transaction(async (tx) => {
+  //   const doubleCheck = await tx.query.iecomTeamSelectionProgress.findFirst({
+  //     where: eq(iecomTeamSelectionProgress.teamId, teamId),
+  //   });
+  //   if (doubleCheck) return;
 
-    const [newProgress] = await tx.insert(iecomTeamSelectionProgress)
-      .values({
-        teamId: teamId,
-        startTime: new Date(),
-        endTime: new Date(Date.now() + DURATION_MINUTES * 60 * 1000), 
-      })
-      .returning();
+  //   const [newProgress] = await tx.insert(iecomTeamSelectionProgress)
+  //     .values({
+  //       teamId: teamId,
+  //       startTime: new Date(),
+  //       endTime: new Date(Date.now() + DURATION_MINUTES * 60 * 1000), 
+  //     })
+  //     .returning();
 
-    const members = await tx.select().from(iecomMember)
-      .where(eq(iecomMember.teamId, teamId));
+  //   const members = await tx.select().from(iecomMember)
+  //     .where(eq(iecomMember.teamId, teamId));
 
-    if (members.length === 0) throw new Error("No members found in team");
+  //   if (members.length === 0) throw new Error("No members found in team");
 
-    const packetIds = [1, 2, 3].sort(() => Math.random() - 0.5);
+  //   const packetIds = [1, 2, 3].sort(() => Math.random() - 0.5);
 
-    const assignments = members.map((member, index) => ({
-      memberAccountId: member.accountId,
-      packetId: packetIds[index % packetIds.length], 
-      progressId: newProgress.id,
-    }));
+  //   const assignments = members.map((member, index) => ({
+  //     memberAccountId: member.accountId,
+  //     packetId: packetIds[index % packetIds.length], 
+  //     progressId: newProgress.id,
+  //   }));
 
-    await tx.insert(iecomTeamAssignment).values(assignments);
-  });
+  //   await tx.insert(iecomTeamAssignment).values(assignments);
+  // });
 
   revalidatePath("/dashboard");
   redirect("/dashboard/iecom/assesment");

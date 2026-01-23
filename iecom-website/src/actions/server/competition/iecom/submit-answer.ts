@@ -32,22 +32,22 @@ export async function submitAnswer(
     )
   });
 
-  if (existingSubmission) {
-    await db.update(iecomSubmission)
-      .set({ 
-        selectedOptionId, 
-        isCorrect: false,
-        submittedAt: new Date() 
-      })
-      .where(eq(iecomSubmission.id, existingSubmission.id));
-  } else {
-    await db.insert(iecomSubmission).values({
-      memberAccountId: userAccountId,
-      problemId,
-      selectedOptionId,
-      isCorrect: false,
-    });
-  }
+  // if (existingSubmission) {
+  //   await db.update(iecomSubmission)
+  //     .set({ 
+  //       selectedOptionId, 
+  //       isCorrect: false,
+  //       submittedAt: new Date() 
+  //     })
+  //     .where(eq(iecomSubmission.id, existingSubmission.id));
+  // } else {
+  //   await db.insert(iecomSubmission).values({
+  //     memberAccountId: userAccountId,
+  //     problemId,
+  //     selectedOptionId,
+  //     isCorrect: false,
+  //   });
+  // }
 
   return { success: true };
 }

@@ -1,57 +1,332 @@
 "use server";
 
-import { DB } from "@/lib/DB";
-import { verifyAdminSession, createAdminSession, logoutAdmin } from "@/actions/server/admin-auth";
-import { getSignedUrlForR2 } from "@/lib/R2";
-import bcrypt from "bcryptjs";
+import { DB, db } from "@/lib/DB";
+import { niceTeam, niceMember, iecomTeam, iecomMember } from "@/lib/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { createAdminSession, logoutAdmin, verifyAdminSession } from "./admin-auth";
+import {
+  CompetitionType,
+  ScalarValue,
+  UpdateAction,
+  NiceTeamInsert,
+  IecomTeamInsert,
+  NiceMemberInsert,
+  IecomMemberInsert
+} from "@/actions/types/Database";
+import { getSignedUrlForR2 } from "@/lib/R2";
+import { AdminFormState, TeamData } from "../types/Admin";
+import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { iecomProblem, iecomSubmission } from "@/lib/schema";
+import { LeaderboardTeam } from "@/actions/types/Admin";
 
-export type AdminFormState = {
-  error?: string;
-  message?: string;
-};
+const SCORING_RULES = {
+  easy:   { correct: 2, wrong: -0.5 },
+  medium: { correct: 3, wrong: -0.75 },
+  hard:   { correct: 4, wrong: -1 },
+} as const;
 
-export interface DashboardMember {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-  phone_num: string;
-  institution: string | null;
-  id_no: string | null;
-  sc_verified: number;
-  sc_link: string | null;
-  fp_verified: number;
-  fp_link: string | null;
-  sd_verified: number;
-  sd_link: string | null;
-  sp_verified: number;
-  sp_link: string | null;
-  notes: string[] | null;
-  status: number;
+// --- Helper: Array Logic for Notes ---
+function getArrayUpdate(
+  action: UpdateAction,
+  currentNotes: string[] | null,
+  value: string
+): string[] {
+  const notes = currentNotes || [];
+  if (action === "add_note") return [...notes, value];
+  if (action === "remove_note") return notes.filter((n) => n !== value);
+  return notes;
 }
 
-export interface DashboardTeam {
-  team_id: number;
-  team_name: string;
-  code: string;
-  notes: string[] | null;
-  status: number;
-  members: DashboardMember[];
-  pp_verified?: number;
-  pp_link?: string | null;
-  initial_draft_link?: string | null;
-  final_report_link?: string | null;
-  video_link?: string | null;
-  infographic_link?: string | null;
-  submission_status?: number;
-  bmc_link?: string | null;
-  poo_link?: string | null;
-  payment_verified?: number;
-  payment_proof_link?: string | null;
-  proposal_verified?: number;
-  proposal_link?: string | null;
+// --- Team Update Action ---
+export async function updateTeamStatus(
+  competition: CompetitionType,
+  teamId: string,
+  field: string,
+  value: ScalarValue,
+  action: UpdateAction = "update"
+) {
+  const session = await verifyAdminSession();
+  if (!session || session.role !== "ADMIN") return { error: "Unauthorized" };
+
+  try {
+    if (competition === "IECOM") {
+      // --- IECOM Logic ---
+      
+      // 1. Handle Notes
+      if (field === "notes" || field === "general_note") {
+        const current = await db.query.iecomTeam.findFirst({
+          where: eq(iecomTeam.teamId, teamId),
+          columns: { notes: true },
+        });
+
+        if (!current) return { error: "Team not found" };
+
+        const newNotes = getArrayUpdate(
+          action === "update" ? "add_note" : action,
+          current.notes,
+          String(value)
+        );
+
+        await db.update(iecomTeam).set({ notes: newNotes }).where(eq(iecomTeam.teamId, teamId));
+      } 
+      // 2. Handle Fields
+      else {
+        const payload: Partial<IecomTeamInsert> = {};
+
+        // Explicit Mapping: Form Field -> Drizzle Schema Key
+        if (field === "status") payload.status = Number(value);
+        else if (field === "pp_verified") payload.ppVerified = Number(value);
+
+        if (Object.keys(payload).length > 0) {
+          await db.update(iecomTeam).set(payload).where(eq(iecomTeam.teamId, teamId));
+        }
+      }
+    } 
+    else {
+      // --- NICE Logic ---
+
+      // 1. Handle Notes
+      if (field === "notes" || field === "general_note") {
+        const current = await db.query.niceTeam.findFirst({
+          where: eq(niceTeam.teamId, teamId),
+          columns: { notes: true },
+        });
+
+        if (!current) return { error: "Team not found" };
+
+        const newNotes = getArrayUpdate(
+          action === "update" ? "add_note" : action,
+          current.notes,
+          String(value)
+        );
+
+        await db.update(niceTeam).set({ notes: newNotes }).where(eq(niceTeam.teamId, teamId));
+      } 
+      // 2. Handle Fields
+      else {
+        const payload: Partial<NiceTeamInsert> = {};
+
+        // Explicit Mapping: Form Field -> Drizzle Schema Key
+        if (field === "status") payload.status = Number(value);
+        else if (field === "submission_status") payload.submissionStatus = Number(value);
+        else if (field === "payment_verified") payload.paymentVerified = Number(value);
+        else if (field === "proposal_verified") payload.proposalVerified = Number(value);
+
+        if (Object.keys(payload).length > 0) {
+          await db.update(niceTeam).set(payload).where(eq(niceTeam.teamId, teamId));
+        }
+      }
+    }
+
+    revalidatePath("/admin/dashboard");
+    return { success: true, message: "Team Updated" };
+  } catch (e) {
+    console.error("Update team error:", e);
+    return { error: "Failed to update team" };
+  }
+}
+
+// --- Member Update Action ---
+export async function updateMemberStatus(
+  competition: CompetitionType,
+  teamId: string,
+  accountId: string,
+  field: string,
+  value: ScalarValue,
+  action: UpdateAction = "update"
+) {
+  const session = await verifyAdminSession();
+  if (!session || session.role !== "ADMIN") return { error: "Unauthorized" };
+
+  try {
+    const numericVal = Number(value);
+
+    // To avoid 'any', we branch logic based on competition.
+    // This allows TypeScript to infer the exact Partial<InsertModel> for .set()
+    
+    if (competition === "IECOM") {
+      const whereClause = and(eq(iecomMember.teamId, teamId), eq(iecomMember.accountId, accountId));
+
+      if (field === "notes" || field === "general_note") {
+        const current = await db.query.iecomMember.findFirst({
+          where: whereClause,
+          columns: { notes: true },
+        });
+
+        if (!current) return { error: "Member not found" };
+
+        const newNotes = getArrayUpdate(
+          action === "update" ? "add_note" : action,
+          current.notes,
+          String(value)
+        );
+
+        await db.update(iecomMember).set({ notes: newNotes }).where(whereClause);
+      } else {
+        const payload: Partial<IecomMemberInsert> = {};
+
+        // Strict Mapping
+        if (field === "status") payload.status = numericVal;
+        else if (field === "sc_verified") payload.scVerified = numericVal;
+        else if (field === "fp_verified") payload.fpVerified = numericVal;
+        else if (field === "sd_verified") payload.sdVerified = numericVal;
+        else if (field === "sp_verified") payload.spVerified = numericVal;
+
+        if (Object.keys(payload).length > 0) {
+          await db.update(iecomMember).set(payload).where(whereClause);
+        }
+      }
+    } 
+    else {
+      // NICE COMPETITION
+      const whereClause = and(eq(niceMember.teamId, teamId), eq(niceMember.accountId, accountId));
+
+      if (field === "notes" || field === "general_note") {
+        const current = await db.query.niceMember.findFirst({
+          where: whereClause,
+          columns: { notes: true },
+        });
+
+        if (!current) return { error: "Member not found" };
+
+        const newNotes = getArrayUpdate(
+          action === "update" ? "add_note" : action,
+          current.notes,
+          String(value)
+        );
+
+        await db.update(niceMember).set({ notes: newNotes }).where(whereClause);
+      } else {
+        const payload: Partial<NiceMemberInsert> = {};
+
+        // Strict Mapping
+        if (field === "status") payload.status = numericVal;
+        else if (field === "sc_verified") payload.scVerified = numericVal;
+        else if (field === "fp_verified") payload.fpVerified = numericVal;
+        else if (field === "sd_verified") payload.sdVerified = numericVal;
+        else if (field === "sp_verified") payload.spVerified = numericVal;
+
+        if (Object.keys(payload).length > 0) {
+          await db.update(niceMember).set(payload).where(whereClause);
+        }
+      }
+    }
+
+    revalidatePath("/admin/dashboard");
+    return { success: true, message: "Member updated" };
+  } catch (e) {
+    console.error("Member update error:", e);
+    return { error: "Failed to update member" };
+  }
+}
+
+export async function getSignedDocUrl(key: string | null) {
+  const session = await verifyAdminSession();
+  if (!session || session.role !== "ADMIN") return { error: "Unauthorized" };
+
+  if (!key) return { error: "No key provided" };
+
+  const url = await getSignedUrlForR2(key);
+  
+  if (!url) return { error: "Failed to sign URL" };
+
+  return { success: true, url };
+}
+
+export async function getAdminDashboardData() {
+  const session = await verifyAdminSession();
+  if (!session) throw new Error("Unauthorized");
+
+  // 1. Fetch NICE Teams
+  // We map snake_case columns to camelCase keys directly in the SQL for performance
+  const niceResult = await db.execute(sql`
+    SELECT 
+      t.team_id as "teamId", 
+      t.name, 
+      t.code, 
+      t.status,
+      t.notes,
+      t.submission_status as "submissionStatus", 
+      t.bmc_link as "bmcLink", 
+      t.poo_link as "pooLink", 
+      t.proposal_link as "proposalLink", 
+      t.payment_proof_link as "paymentProofLink", 
+      t.payment_verified as "paymentVerified", 
+      t.proposal_verified as "proposalVerified",
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', m.account_id, 
+            'name', m.name, 
+            'role', m.role, 
+            'email', m.email, 
+            'phoneNum', m.phone_num,
+            'institution', m.institution,
+            'idNo', m.id_no,
+            'notes', m.notes, 
+            'status', m.status,
+            'scVerified', m.sc_verified, 'scLink', m.sc_link,
+            'fpVerified', m.fp_verified, 'fpLink', m.fp_link,
+            'sdVerified', m.sd_verified, 'sdLink', m.sd_link,
+            'spVerified', m.sp_verified, 'spLink', m.sp_link
+          ) ORDER BY m.name ASC
+        ) FILTER (WHERE m.account_id IS NOT NULL), '[]'
+      ) as members
+    FROM nice_team t
+    LEFT JOIN nice_member m ON t.team_id = m.team_id
+    GROUP BY t.team_id 
+    ORDER BY t.name ASC
+  `);
+
+  // 2. Fetch IECOM Teams
+  const iecomResult = await db.execute(sql`
+    SELECT 
+      t.team_id as "teamId", 
+      t.name, 
+      t.code, 
+      t.status, 
+      t.notes,
+      t.pp_verified as "ppVerified", 
+      t.pp_link as "paymentProofLink", 
+      t.initial_draft_link as "initialDraftLink", 
+      t.final_report_link as "finalReportLink", 
+      t.video_link as "videoLink", 
+      t.infographic_link as "infographicLink",
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', m.account_id, 
+            'name', m.name, 
+            'role', m.role, 
+            'email', m.email, 
+            'phoneNum', m.phone_num,
+            'institution', m.institution,
+            'idNo', m.id_no,
+            'notes', m.notes, 
+            'status', m.status,
+            'scVerified', m.sc_verified, 'scLink', m.sc_link,
+            'fpVerified', m.fp_verified, 'fpLink', m.fp_link,
+            'sdVerified', m.sd_verified, 'sdLink', m.sd_link,
+            'spVerified', m.sp_verified, 'spLink', m.sp_link
+          ) ORDER BY m.name ASC
+        ) FILTER (WHERE m.account_id IS NOT NULL), '[]'
+      ) as members
+    FROM iecom_team t
+    LEFT JOIN iecom_member m ON t.team_id = m.team_id
+    GROUP BY t.team_id 
+    ORDER BY t.name ASC
+  `);
+
+  // 3. Return typed data
+  // The 'rows' property contains the raw array of objects from the driver
+  return { 
+    niceTeams: niceResult.rows as unknown as TeamData[], 
+    iecomTeams: iecomResult.rows as unknown as TeamData[], 
+    role: session.role, 
+    username: session.username 
+  };
 }
 
 export async function adminLogin(prevState: AdminFormState, formData: FormData): Promise<AdminFormState> {
@@ -80,211 +355,91 @@ export async function adminLogout() {
   redirect("/admin");
 }
 
-export async function getAdminDashboardData() {
+export async function getIecomLeaderboard(): Promise<LeaderboardTeam[]> {
   const session = await verifyAdminSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) return [];
 
-  const niceRaw = await DB`
-    SELECT 
-      t.team_id, t.name as team_name, t.code, t.submission_status, 
-      t.bmc_link, t.poo_link, t.notes, t.status,
-      t.payment_proof_link, t.proposal_link, t.payment_verified, t.proposal_verified,
-      COALESCE(
-        json_agg(
-          json_build_object(
-            'id', m.account_id, 
-            'name', m.name, 
-            'role', m.role, 
-            'email', m.email, 
-            'phone_num', m.phone_num,
-            'institution', m.institution,
-            'id_no', m.id_no,
-            'sc_verified', m.sc_verified, 'sc_link', m.sc_link,
-            'fp_verified', m.fp_verified, 'fp_link', m.fp_link,
-            'sd_verified', m.sd_verified, 'sd_link', m.sd_link,
-            'sp_verified', m.sp_verified, 'sp_link', m.sp_link,
-            'notes', m.notes, 'status', m.status
-          ) ORDER BY m.name ASC
-        ) FILTER (WHERE m.account_id IS NOT NULL), '[]'
-      ) as members
-    FROM nice_team t
-    LEFT JOIN nice_member m ON t.team_id = m.team_id
-    GROUP BY t.team_id ORDER BY t.name ASC
-  `;
+  // 1. Fetch All Necessary Data
+  // We use db.select() to get raw data for calculation
+  const [problems, submissions, members, teams] = await Promise.all([
+    db.select().from(iecomProblem),
+    db.select().from(iecomSubmission),
+    db.select().from(iecomMember),
+    db.select().from(iecomTeam),
+  ]);
 
-  const iecomRaw = await DB`
-    SELECT 
-      t.team_id, t.name as team_name, t.code, t.pp_verified, t.pp_link, 
-      t.initial_draft_link, t.final_report_link, t.video_link, t.infographic_link,
-      t.notes, t.status,
-      COALESCE(
-        json_agg(
-          json_build_object(
-            'id', m.account_id, 
-            'name', m.name, 
-            'role', m.role, 
-            'email', m.email, 
-            'phone_num', m.phone_num,
-            'institution', m.institution,
-            'id_no', m.id_no,
-            'sc_verified', m.sc_verified, 'sc_link', m.sc_link,
-            'fp_verified', m.fp_verified, 'fp_link', m.fp_link,
-            'sd_verified', m.sd_verified, 'sd_link', m.sd_link,
-            'sp_verified', m.sp_verified, 'sp_link', m.sp_link,
-            'notes', m.notes, 'status', m.status
-          ) ORDER BY m.name ASC
-        ) FILTER (WHERE m.account_id IS NOT NULL), '[]'
-      ) as members
-    FROM iecom_team t
-    LEFT JOIN iecom_member m ON t.team_id = m.team_id
-    GROUP BY t.team_id ORDER BY t.name ASC
-  `;
+  // 2. Build Helper Maps
+  
+  // Map: ProblemID -> { CorrectAnswerID, Difficulty }
+  const problemMap = new Map<number, { correctId: string; difficulty: 'easy' | 'medium' | 'hard' }>();
+  problems.forEach(p => {
+    const options = p.options as { id: string }[]; 
+    problemMap.set(p.id, { 
+      correctId: options[0].id, 
+      difficulty: p.difficulty as 'easy' | 'medium' | 'hard' 
+    });
+  });
 
-  return { 
-    niceTeams: niceRaw as unknown as DashboardTeam[], 
-    iecomTeams: iecomRaw as unknown as DashboardTeam[], 
-    role: session.role, 
-    username: session.username 
-  };
-}
+  // Map: MemberID -> Stats
+  type MemberStats = { name: string; teamId: string; score: number };
+  const memberStatsMap = new Map<string, MemberStats>();
 
-export async function getSignedDocUrl(key: string) {
-    const session = await verifyAdminSession();
-    if (!session || session.role !== "ADMIN") return { error: "Unauthorized" };
+  members.forEach(m => {
+    memberStatsMap.set(m.accountId, {
+      name: m.name || m.email,
+      teamId: m.teamId,
+      score: 0
+    });
+  });
 
-    if (!key) return { error: "No key provided" };
+  // 3. Calculate Scores
+  for (const sub of submissions) {
+    if (!sub.problemId) continue;
+    
+    const problemInfo = problemMap.get(sub.problemId);
+    const memberStats = memberStatsMap.get(sub.memberAccountId);
 
-    const url = await getSignedUrlForR2(key);
-    if (!url) return { error: "Failed to sign URL" };
+    if (!problemInfo || !memberStats) continue;
 
-    return { success: true, url };
-}
+    const isCorrect = sub.selectedOptionId === problemInfo.correctId;
+    const { correct, wrong } = SCORING_RULES[problemInfo.difficulty];
+    const points = isCorrect ? correct : wrong;
 
-export async function updateTeamStatus(
-  competition: "NICE" | "IECOM",
-  teamId: number,
-  field: string,
-  value: number | string,
-  action?: "update" | "remove_note"
-) {
-  const session = await verifyAdminSession();
-  if (!session || session.role !== "ADMIN") return { error: "Unauthorized" };
-
-  try {
-    if (competition === "IECOM") {
-        if (field === "notes" && action === "remove_note") {
-            await DB`UPDATE iecom_team SET notes = array_remove(notes, ${String(value)}) WHERE team_id = ${teamId}`;
-        }
-        else if (field === "general_note") {
-            await DB`UPDATE iecom_team SET notes = array_append(notes, ${String(value)}) WHERE team_id = ${teamId}`;
-        }
-        else if (field === "status") {
-            await DB`UPDATE iecom_team SET status = ${Number(value)} WHERE team_id = ${teamId}`;
-        }
-        else if (field === "pp_verified") {
-            await DB`UPDATE iecom_team SET pp_verified = ${Number(value)} WHERE team_id = ${teamId}`;
-        }
-        else {
-            return { error: "Invalid field for IECOM" };
-        }
-    }
-    else if (competition === "NICE") {
-        if (field === "notes" && action === "remove_note") {
-            await DB`UPDATE nice_team SET notes = array_remove(notes, ${String(value)}) WHERE team_id = ${teamId}`;
-        }
-        else if (field === "general_note") {
-            await DB`UPDATE nice_team SET notes = array_append(notes, ${String(value)}) WHERE team_id = ${teamId}`;
-        }
-        else if (field === "status") {
-            await DB`UPDATE nice_team SET status = ${Number(value)} WHERE team_id = ${teamId}`;
-        }
-        else if (field === "submission_status") {
-            await DB`UPDATE nice_team SET submission_status = ${Number(value)} WHERE team_id = ${teamId}`;
-        }
-        else {
-            return { error: "Invalid field for NICE" };
-        }
-    }
-
-    revalidatePath("/admin/dashboard");
-    return { success: true, message: "Team Updated" };
-
-  } catch (e) {
-    console.error("Update team error:", e);
-    return { error: "Failed to update team" };
+    memberStats.score += points;
   }
-}
 
-export async function updateMemberStatus(
-  competition: "NICE" | "IECOM",
-  teamId: string,
-  accountId: string,
-  field: string,
-  value: number | string,
-  action?: "update" | "remove_note"
-) {
-  const session = await verifyAdminSession();
-  if (!session || session.role !== "ADMIN") return { error: "Unauthorized" };
+  // 4. Aggregate into Teams
+  const teamResultsMap = new Map<string, LeaderboardTeam>();
 
-  try {
-    if (competition === "IECOM") {
-        if (field === "notes" && action === "remove_note") {
-             await DB`UPDATE iecom_member SET notes = array_remove(notes, ${String(value)}) WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "general_note") {
-             await DB`UPDATE iecom_member SET notes = array_append(notes, ${String(value)}) WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "status") {
-             await DB`UPDATE iecom_member SET status = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "sc_verified") {
-             await DB`UPDATE iecom_member SET sc_verified = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "fp_verified") {
-             await DB`UPDATE iecom_member SET fp_verified = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "sd_verified") {
-             await DB`UPDATE iecom_member SET sd_verified = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "sp_verified") {
-             await DB`UPDATE iecom_member SET sp_verified = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else {
-            return { error: "Invalid field for IECOM Member" };
-        }
+  // Initialize all teams with 0
+  teams.forEach(t => {
+    teamResultsMap.set(t.teamId, {
+      teamId: t.teamId,
+      teamName: t.name,
+      totalScore: 0,
+      rank: 0, // Will set later
+      members: []
+    });
+  });
+
+  // Populate scores
+  memberStatsMap.forEach((stats) => {
+    const team = teamResultsMap.get(stats.teamId);
+    if (team) {
+      team.members.push({ name: stats.name, score: stats.score });
+      team.totalScore += stats.score;
     }
-    else if (competition === "NICE") {
-        if (field === "notes" && action === "remove_note") {
-             await DB`UPDATE nice_member SET notes = array_remove(notes, ${String(value)}) WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "general_note") {
-             await DB`UPDATE nice_member SET notes = array_append(notes, ${String(value)}) WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "status") {
-             await DB`UPDATE nice_member SET status = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "sc_verified") {
-             await DB`UPDATE nice_member SET sc_verified = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "fp_verified") {
-             await DB`UPDATE nice_member SET fp_verified = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "sd_verified") {
-             await DB`UPDATE nice_member SET sd_verified = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else if (field === "sp_verified") {
-             await DB`UPDATE nice_member SET sp_verified = ${Number(value)} WHERE team_id = ${teamId} AND account_id = ${accountId}`;
-        }
-        else {
-            return { error: "Invalid field for NICE Member" };
-        }
-    }
+  });
 
-    revalidatePath("/admin/dashboard");
-    return { success: true, message: "Member updated" };
+  // 5. Sort and Rank
+  const leaderboard = Array.from(teamResultsMap.values())
+    .sort((a, b) => b.totalScore - a.totalScore)
+    .map((team, index) => ({
+      ...team,
+      rank: index + 1,
+      // Sort members by contribution score for the detailed view
+      members: team.members.sort((a, b) => b.score - a.score)
+    }));
 
-  } catch (e) {
-    console.error("Member update error:", e);
-    return { error: "Failed to update member" };
-  }
+  return leaderboard;
 }

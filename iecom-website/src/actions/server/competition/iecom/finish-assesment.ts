@@ -20,7 +20,7 @@ export async function finishExam(reason?: string) {
     .set({
       isCheatingFlagged: !!reason, 
       cheatingReason: reason || null,
-      endTime: new Date(), 
+      endTime: "NONE", 
     })
     .where(eq(iecomTeamSelectionProgress.id, assignment.progressId));
 
