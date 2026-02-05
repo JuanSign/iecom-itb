@@ -239,8 +239,6 @@ export async function getAdminDashboardData() {
   const session = await verifyAdminSession();
   if (!session) throw new Error("Unauthorized");
 
-  // 1. Fetch NICE Teams
-  // We map snake_case columns to camelCase keys directly in the SQL for performance
   const niceResult = await db.execute(sql`
     SELECT 
       t.team_id as "teamId", 
@@ -255,6 +253,12 @@ export async function getAdminDashboardData() {
       t.payment_proof_link as "paymentProofLink", 
       t.payment_verified as "paymentVerified", 
       t.proposal_verified as "proposalVerified",
+      t.commitment_link as "commitmentLink",
+      t.commitment_at as "commitmentAt", 
+      t.banner_link as "bannerLink",
+      t.banner_at as "bannerAt",
+      t.ppt_link as "pptLink",
+      t.ppt_at as "pptAt",
       COALESCE(
         json_agg(
           json_build_object(
@@ -280,7 +284,7 @@ export async function getAdminDashboardData() {
     ORDER BY t.name ASC
   `);
 
-  // 2. Fetch IECOM Teams
+  // 2. Fetch IECOM Teams (No changes needed here)
   const iecomResult = await db.execute(sql`
     SELECT 
       t.team_id as "teamId", 
@@ -319,8 +323,6 @@ export async function getAdminDashboardData() {
     ORDER BY t.name ASC
   `);
 
-  // 3. Return typed data
-  // The 'rows' property contains the raw array of objects from the driver
   return { 
     niceTeams: niceResult.rows as unknown as TeamData[], 
     iecomTeams: iecomResult.rows as unknown as TeamData[], 

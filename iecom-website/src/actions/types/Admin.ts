@@ -33,30 +33,34 @@ export interface TeamMember {
 }
 
 export interface TeamData {
-  teamId: string; // Changed to string (UUID) based on schema
+  teamId: string;
   name: string;
   code: string;
   status: number;
   notes: string[] | null;
   members: TeamMember[];
   
-  // Competition specific fields (Unified for easier table rendering)
   paymentProofLink?: string | null;
   paymentVerified?: VerificationStatus;
   
-  // IECOM specific
-  ppVerified?: VerificationStatus; // Using this as payment verified for IECOM
+  ppVerified?: VerificationStatus; 
   initialDraftLink?: string | null;
   finalReportLink?: string | null;
   videoLink?: string | null;
   infographicLink?: string | null;
 
-  // NICE specific
   submissionStatus?: number;
   bmcLink?: string | null;
   pooLink?: string | null;
   proposalLink?: string | null;
   proposalVerified?: VerificationStatus;
+  
+  commitmentLink?: string | null;
+  commitmentAt?: Date | string | null; 
+  bannerLink?: string | null;
+  bannerAt?: Date | string | null;    
+  pptLink?: string | null;
+  pptAt?: Date | string | null;       
 }
 
 export type AdminFormState = {

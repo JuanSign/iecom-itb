@@ -40,27 +40,51 @@ export function TeamDetails({ team, competition }: { team: TeamData; competition
         {/* Left Column: Documents & Notes */}
         <div className="lg:col-span-4 space-y-6">
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase text-zinc-500 flex items-center gap-2"><FileText className="h-3 w-3" /> Team Documents</h4>
-            <div className="grid gap-2">
-              {competition === "IECOM" ? (
-                <>
-                  <DocButton label="Payment Proof" link={team.paymentProofLink} />
-                  <DocButton label="Initial Draft" link={team.initialDraftLink} />
-                  <DocButton label="Final Report" link={team.finalReportLink} />
-                  <DocButton label="Infographic" link={team.infographicLink} />
-                  <DocButton label="Video" link={team.videoLink} isExternal />
-                </>
-              ) : (
-                <>
-                   <DocButton label="Payment Proof" link={team.paymentProofLink} />
-                   <DocButton label="Proposal" link={team.proposalLink} />
-                   <div className="border-t border-zinc-800 my-1"></div>
-                   <DocButton label="BMC" link={team.bmcLink} />
-                   <DocButton label="POO" link={team.pooLink} />
-                </>
-              )}
-            </div>
+          <h4 className="text-xs font-bold uppercase text-zinc-500 flex items-center gap-2">
+            <FileText className="h-3 w-3" /> Team Documents
+          </h4>
+          <div className="grid gap-2">
+            {competition === "IECOM" ? (
+              <>
+                <DocButton label="Payment Proof" link={team.paymentProofLink} />
+                <DocButton label="Initial Draft" link={team.initialDraftLink} />
+                <DocButton label="Final Report" link={team.finalReportLink} />
+                <DocButton label="Infographic" link={team.infographicLink} />
+                <DocButton label="Video" link={team.videoLink} isExternal />
+              </>
+            ) : (
+              <>
+                {/* Stage 1 & 2 */}
+                <DocButton label="BMC" link={team.bmcLink} />
+                <DocButton label="POO" link={team.pooLink} />
+                <DocButton label="Payment Proof" link={team.paymentProofLink} />
+                <DocButton label="Proposal" link={team.proposalLink} />
+                
+                {/* Stage 3 - Final */}
+                <div className="pt-2 mt-2 border-t border-zinc-800">
+                    <p className="text-[10px] text-zinc-500 mb-2 font-mono uppercase">Stage 3 Deliverables</p>
+                    <div className="grid gap-2">
+                        <DocButton 
+                            label="Commitment Letter" 
+                            link={team.commitmentLink} 
+                            date={team.commitmentAt} 
+                        />
+                        <DocButton 
+                            label="Exhibition Banner" 
+                            link={team.bannerLink} 
+                            date={team.bannerAt} 
+                        />
+                        <DocButton 
+                            label="Pitch Deck (PPT)" 
+                            link={team.pptLink} 
+                            date={team.pptAt} 
+                        />
+                    </div>
+                </div>
+              </>
+            )}
           </div>
+        </div>
 
           <div className="space-y-3">
              <h4 className="text-xs font-bold uppercase text-zinc-500">Team Notes</h4>
