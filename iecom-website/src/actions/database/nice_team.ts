@@ -62,9 +62,14 @@ export async function fetchTeamPageData(accountId: string) {
         SELECT 
             team_id, name, code, status, messages, 
             notes, bmc_link, poo_link, submission_status,
-            -- NEW COLUMNS WITH ALIASES
             payment_proof_link as "paymentProofLink",
-            proposal_link as "proposalLink"
+            proposal_link as "proposalLink",
+            commitment_link as "commitmentLink",
+            commitment_at as "commitmentAt",
+            banner_link as "bannerLink",
+            banner_at as "bannerAt",
+            ppt_link as "pptLink",
+            ppt_at as "pptAt"
         FROM nice_team 
         WHERE team_id = ${teamId}
     `) as TeamNICE[];

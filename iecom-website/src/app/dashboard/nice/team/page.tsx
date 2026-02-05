@@ -23,6 +23,7 @@ import { TeamDescriptionManager } from "@/components/TeamDashboard/TeamDescripti
 import { TeamRequestsList } from "@/components/TeamDashboard/TeamRequestsList";
 import { StageTwoSection } from "@/components/StageTwo";
 import { getSignedUrlForR2 } from "@/lib/R2";
+import { StageThreeSection } from "@/components/StageThree";
 
 type TeamRequest = {
   id: string;
@@ -113,9 +114,18 @@ export default async function TeamPage() {
     ORDER BY created_at DESC
   `;
 
-  const [paymentProofUrl, proposalUrl] = await Promise.all([
+  const [
+    paymentProofUrl, 
+    proposalUrl,
+    commitmentUrl,
+    bannerUrl,
+    pptUrl
+  ] = await Promise.all([
     getSignedUrlForR2(team.paymentProofLink),
     getSignedUrlForR2(team.proposalLink),
+    getSignedUrlForR2(team.commitmentLink),
+    getSignedUrlForR2(team.bannerLink),
+    getSignedUrlForR2(team.pptLink),
   ]);
 
   const requests = requestsData.map(req => ({
@@ -266,6 +276,20 @@ export default async function TeamPage() {
           viewProposalUrl={proposalUrl}
         />
 
+        {team.submission_status === 3 && (
+            <StageThreeSection 
+                teamId={team.team_id}
+                commitmentLink={team.commitmentLink}
+                commitmentAt={team.commitmentAt}
+                bannerLink={team.bannerLink}
+                bannerAt={team.bannerAt}
+                pptLink={team.pptLink}
+                pptAt={team.pptAt}
+                viewCommitmentUrl={commitmentUrl}
+                viewBannerUrl={bannerUrl}
+                viewPptUrl={pptUrl}
+            />
+        )}
       </div>
     </div>
   );

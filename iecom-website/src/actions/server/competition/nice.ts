@@ -158,6 +158,10 @@ export async function getTeamPageData() {
         if(data.team.bmc_link) data.team.bmc_link = await getSignedUrlForR2(data.team.bmc_link);
         if(data.team.poo_link) data.team.poo_link = await getSignedUrlForR2(data.team.poo_link);
 
+        if(data.team.commitmentLink) data.team.commitmentLink = await getSignedUrlForR2(data.team.commitmentLink);
+        if(data.team.bannerLink) data.team.bannerLink = await getSignedUrlForR2(data.team.bannerLink);
+        if(data.team.pptLink) data.team.pptLink = await getSignedUrlForR2(data.team.pptLink);
+
         return data;
     } catch (e) {
         if ((e as Error).message === "User not assigned to a team.") {
@@ -252,6 +256,7 @@ export async function uploadNiceTeamDocuments(
 }
 
 type NiceStageTwoType = 'payment_proof' | 'proposal';
+export type NiceStageThreeType = 'commitment' | 'banner' | 'ppt';
 
 export async function getNiceStageTwoUploadUrl(
     teamId: string, 
@@ -268,12 +273,66 @@ const CONFIG: Record<string, { column: 'paymentProofLink' | 'proposalLink'; fold
     'payment_proof': { column: 'paymentProofLink', folder: 'nice/payments' },
     'proposal': { column: 'proposalLink', folder: 'nice/proposals' },
 };
+const CONFIG_STAGE_3: Record<NiceStageThreeType, { 
+    linkColumn: 'commitmentLink' | 'bannerLink' | 'pptLink'; 
+    timeColumn: 'commitmentAt' | 'bannerAt' | 'pptAt'; 
+    folder: string 
+}> = {
+    'commitment': { 
+        linkColumn: 'commitmentLink', 
+        timeColumn: 'commitmentAt', 
+        folder: 'nice/commitments' 
+    },
+    'banner': { 
+        linkColumn: 'bannerLink', 
+        timeColumn: 'bannerAt', 
+        folder: 'nice/banners' 
+    },
+    'ppt': { 
+        linkColumn: 'pptLink', 
+        timeColumn: 'pptAt', 
+        folder: 'nice/ppts' 
+    },
+};
 
 export async function saveNiceStageTwoKey(teamId: string, type: string, key: string) {
     const settings = CONFIG[type];
     
     await db.update(niceTeam)
         .set({ [settings.column]: key })
+        .where(eq(niceTeam.teamId, teamId));
+
+    revalidatePath("/dashboard/nice/team"); 
+    return { success: true };
+}
+
+export async function getNiceStageThreeUploadUrl(
+    teamId: string, 
+    type: NiceStageThreeType, 
+    fileName: string,
+    fileType: string
+) {
+    const settings = CONFIG_STAGE_3[type];
+    
+    const { signedUrl, key } = await getPresignedUploadUrl(
+        settings.folder, 
+        fileName, 
+        fileType, 
+        teamId
+    );
+    
+    return { signedUrl, key };
+}
+
+export async function saveNiceStageThreeKey(teamId: string, type: NiceStageThreeType, key: string) {
+    const settings = CONFIG_STAGE_3[type];
+    const now = new Date();
+    const timestampWIB = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+    await db.update(niceTeam)
+        .set({ 
+            [settings.linkColumn]: key,
+            [settings.timeColumn]: timestampWIB 
+        })
         .where(eq(niceTeam.teamId, teamId));
 
     revalidatePath("/dashboard/nice/team"); 

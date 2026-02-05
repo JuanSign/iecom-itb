@@ -43,6 +43,12 @@ export const niceTeam = pgTable("nice_team", {
 	proposalLink: text("proposal_link"),
 	paymentVerified: integer("payment_verified").default(0),
 	proposalVerified: integer("proposal_verified").default(0),
+	commitmentLink: text("commitment_link"),
+	commitmentAt: timestamp("commitment_at"),
+	bannerLink: text("banner_link"),
+	bannerAt: timestamp("banner_at"),
+	pptLink: text("ppt_link"),
+	pptAt: timestamp("ppt_at"),
 }, (table) => [
 	unique("unique_team_name_nice").on(table.name),
 	check("nice_team_code_check", sql`code ~ '^[A-Z]{5}$'::text`),

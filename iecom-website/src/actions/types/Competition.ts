@@ -46,17 +46,23 @@ export type TeamIECOM = {
 }
 
 export type TeamNICE = {
-  team_id: string,
-  name: string, 
-  code: string,
-  status: number,
-  messages: string[] | null,
-  notes: string[] | null,
-  bmc_link: string | null,
-  poo_link: string | null,
-  submission_status: number,
-  paymentProofLink: string | null,
-  proposalLink: string | null,
+  team_id: string;
+  name: string;
+  code: string;
+  status: number;
+  messages: string[] | null;
+  notes: string[] | null;
+  bmc_link: string | null;
+  poo_link: string | null;
+  submission_status: number;
+  paymentProofLink: string | null;
+  proposalLink: string | null;
+  commitmentLink: string | null;
+  commitmentAt: Date | null;
+  bannerLink: string | null;
+  bannerAt: Date | null;
+  pptLink: string | null;
+  pptAt: Date | null;
 }
 
 export type UpdateMemberFormState = {
