@@ -46,35 +46,38 @@ export function TeamDetails({ team, competition }: { team: TeamData; competition
           <div className="grid gap-2">
             {competition === "IECOM" ? (
               <>
-                <DocButton label="Payment Proof" link={team.paymentProofLink} />
-                <DocButton label="Initial Draft" link={team.initialDraftLink} />
-                <DocButton label="Final Report" link={team.finalReportLink} />
-                <DocButton label="Infographic" link={team.infographicLink} />
-                <DocButton label="Video" link={team.videoLink} isExternal />
+                <DocButton name = {team.name} label="Payment Proof" link={team.paymentProofLink} />
+                <DocButton name = {team.name} label="Initial Draft" link={team.initialDraftLink} />
+                <DocButton name = {team.name} label="Final Report" link={team.finalReportLink} />
+                <DocButton name = {team.name} label="Infographic" link={team.infographicLink} />
+                <DocButton name = {team.name} label="Video" link={team.videoLink} isExternal />
               </>
             ) : (
               <>
                 {/* Stage 1 & 2 */}
-                <DocButton label="BMC" link={team.bmcLink} />
-                <DocButton label="POO" link={team.pooLink} />
-                <DocButton label="Payment Proof" link={team.paymentProofLink} />
-                <DocButton label="Proposal" link={team.proposalLink} />
+                <DocButton name = {team.name} label="BMC" link={team.bmcLink} />
+                <DocButton name = {team.name} label="POO" link={team.pooLink} />
+                <DocButton name = {team.name} label="Payment Proof" link={team.paymentProofLink} />
+                <DocButton name = {team.name} label="Proposal" link={team.proposalLink} />
                 
                 {/* Stage 3 - Final */}
                 <div className="pt-2 mt-2 border-t border-zinc-800">
                     <p className="text-[10px] text-zinc-500 mb-2 font-mono uppercase">Stage 3 Deliverables</p>
                     <div className="grid gap-2">
                         <DocButton 
+                            name = {team.name}
                             label="Commitment Letter" 
                             link={team.commitmentLink} 
                             date={team.commitmentAt} 
                         />
                         <DocButton 
+                            name = {team.name}
                             label="Exhibition Banner" 
                             link={team.bannerLink} 
                             date={team.bannerAt} 
                         />
                         <DocButton 
+                            name = {team.name}
                             label="Pitch Deck (PPT)" 
                             link={team.pptLink} 
                             date={team.pptAt} 

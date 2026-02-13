@@ -6,13 +6,14 @@ import { toast } from "sonner";
 import { getSignedDocUrl } from "@/actions/server/admin";
 
 interface DocButtonProps {
+  name : string;
   label: string;
   link?: string | null;
   isExternal?: boolean;
-  date?: Date | string | null; // Added date prop
+  date?: Date | string | null;
 }
 
-export const DocButton = ({ label, link, isExternal = false, date }: DocButtonProps) => {
+export const DocButton = ({ name, label, link, isExternal = false, date }: DocButtonProps) => {
   const [loading, setLoading] = useState(false);
 
   // Format date helper (Jakarta Time)
@@ -35,6 +36,7 @@ export const DocButton = ({ label, link, isExternal = false, date }: DocButtonPr
   }
 
   const handleClick = async () => {
+    // 1. External Links: Usually cannot be auto-downloaded due to CORS, keep as open in new tab
     if (isExternal) {
       window.open(link, "_blank");
       return;
@@ -42,12 +44,44 @@ export const DocButton = ({ label, link, isExternal = false, date }: DocButtonPr
 
     setLoading(true);
     try {
+      // 2. Get the signed URL from your server action
       const res = await getSignedDocUrl(link);
       
       if (res?.success && res.url) {
-        window.open(res.url, "_blank");
+        try {
+          // --- AUTO DOWNLOAD LOGIC START ---
+          
+          // A. Fetch the file content
+          const response = await fetch(res.url);
+          if (!response.ok) throw new Error("Network response was not ok");
+          
+          // B. Convert to Blob (Binary Large Object)
+          const blob = await response.blob();
+          
+          // C. Create a temporary URL for the Blob
+          const downloadUrl = window.URL.createObjectURL(blob);
+          
+          // D. Create a hidden <a> element to trigger the download
+          const a = document.createElement("a");
+          a.href = downloadUrl;
+          a.download = `${name}_${label}`; // Uses the label as the filename (e.g., "Invoice.pdf")
+          document.body.appendChild(a);
+          a.click();
+          
+          // E. Cleanup
+          a.remove();
+          window.URL.revokeObjectURL(downloadUrl);
+          toast.success("Download started");
+          
+          // --- AUTO DOWNLOAD LOGIC END ---
+
+        } catch (downloadError) {
+          // Fallback: If CORS blocks the fetch or blob fails, open in new tab
+          console.error("Download failed, falling back to open", downloadError);
+          window.open(res.url, "_blank");
+        }
       } else {
-        toast.error("Could not open document");
+        toast.error("Could not retrieve document");
       }
     } catch {
       toast.error("Error accessing file");
@@ -68,7 +102,6 @@ export const DocButton = ({ label, link, isExternal = false, date }: DocButtonPr
           {label}
         </span>
         
-        {/* Render Date if available */}
         {formattedDate && (
           <span className="text-[10px] text-zinc-500 flex items-center gap-1 pl-5">
             <Clock className="h-2.5 w-2.5" /> 
